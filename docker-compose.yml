@@ -1,0 +1,11 @@
+services:
+  doodle-tank:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - TANK_KEY=${TANK_KEY:-}
+      - DEFAULT_TANK=${DEFAULT_TANK:-family}
+    volumes:
+      - ./data:/data
+    restart: unless-stopped

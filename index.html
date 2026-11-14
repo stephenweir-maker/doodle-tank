@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Doodle Tank</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1d2742;--paper:#fff8ec;--accent:#ff7b54;--gold:#ffc83d;--sea:#2a8fb0;--safe-b:env(safe-area-inset-bottom,0px);--safe-t:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:#0d3b5c;font-family:'Baloo 2',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);user-select:none;-webkit-user-select:none}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#vignette{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 45%,transparent 55%,rgba(0,10,30,.38) 100%)}
+.mode-feed #gl{cursor:crosshair}.mode-clean #gl{cursor:grab}
+/* top bar */
+#top{position:fixed;left:0;right:0;top:0;padding:calc(10px + var(--safe-t)) 12px 0;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none}
+.pill{pointer-events:auto;background:rgba(255,248,236,.92);border-radius:999px;padding:4px 14px;font-weight:800;box-shadow:0 4px 14px rgba(0,20,40,.25);display:flex;align-items:center;gap:6px;font-size:16px}
+#brand{font-size:18px;letter-spacing:.3px}
+#brand b{color:var(--accent)}
+.scaleIcon{width:20px;height:20px;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:radial-gradient(circle at 35% 30%,#fff6c4 0 18%,#ffd54a 35%,#e69a12 100%);box-shadow:inset 0 -2px 0 rgba(150,80,0,.35);display:inline-block}
+#scaleChip.bump{animation:bump .5s}
+@keyframes bump{30%{transform:scale(1.25)}}
+#hint{position:fixed;left:50%;top:calc(58px + var(--safe-t));transform:translateX(-50%);pointer-events:none;color:#fff;font-weight:700;text-shadow:0 2px 6px rgba(0,0,0,.4);font-size:15px;opacity:0;transition:opacity .4s;text-align:center;white-space:nowrap}
+#hint.on{opacity:1}
+/* toolbar */
+#bar{position:fixed;left:50%;bottom:calc(12px + var(--safe-b));transform:translateX(-50%);display:flex;gap:4px;background:rgba(255,248,236,.94);padding:6px;border-radius:26px;box-shadow:0 8px 26px rgba(0,20,40,.35)}
+#bar button{border:0;background:transparent;font:inherit;color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;width:58px;height:56px;border-radius:20px;font-size:12px;font-weight:700;line-height:1;gap:3px;cursor:pointer;transition:background .15s,transform .1s}
+#bar button span{font-size:23px;line-height:1}
+#bar button:active{transform:scale(.92)}
+#bar button.on{background:#ffe2b8}
+#bar #bDraw{background:var(--accent);color:#fff;width:66px}
+#bar #bDraw.on{background:#ff6236}
+/* toast */
+#toast{position:fixed;left:50%;bottom:calc(92px + var(--safe-b));transform:translateX(-50%) translateY(20px);background:rgba(29,39,66,.92);color:#fff;padding:8px 16px;border-radius:16px;font-weight:600;font-size:15px;opacity:0;transition:.3s;pointer-events:none;max-width:88vw;text-align:center}
+#toast.on{opacity:1;transform:translateX(-50%)}
+/* sheets */
+.sheet{position:fixed;left:0;right:0;bottom:0;max-height:88vh;background:var(--paper);border-radius:24px 24px 0 0;box-shadow:0 -10px 40px rgba(0,20,40,.4);transform:translateY(105%);transition:transform .3s cubic-bezier(.2,.9,.3,1);overflow:auto;padding:14px 16px calc(18px + var(--safe-b));z-index:10;max-width:760px;margin:0 auto}
+.sheet.open{transform:none}
+.sheet h2{margin:0 0 8px;font-size:22px;display:flex;justify-content:space-between;align-items:center}
+.x{border:0;background:#f0e3cc;border-radius:50%;width:36px;height:36px;font-size:18px;cursor:pointer;color:var(--ink)}
+#scrim{position:fixed;inset:0;background:rgba(0,15,35,.35);opacity:0;pointer-events:none;transition:opacity .3s;z-index:9}
+#scrim.on{opacity:1;pointer-events:auto}
+.btn{border:0;font:inherit;font-weight:700;border-radius:14px;padding:10px 16px;cursor:pointer;background:#f0e3cc;color:var(--ink);font-size:15px}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.danger{background:#ffd9d2;color:#b3261e}
+.btn:active{transform:scale(.96)}
+/* editor */
+#editor{top:0;max-height:none;border-radius:0;transform:translateY(100%);padding:calc(8px + var(--safe-t)) 12px calc(14px + var(--safe-b))}
+#editor.open{transform:none}
+#editor .row{display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap}
+#edHead{display:flex;gap:8px;align-items:center}
+#fishName{flex:1;min-width:0;font:inherit;font-weight:700;font-size:18px;border:2px solid #ead9bb;border-radius:14px;padding:6px 12px;background:#fff;color:var(--ink)}
+#paperWrap{position:relative;width:100%;aspect-ratio:1000/640;border-radius:16px;overflow:hidden;background:#fffdf7;background-image:linear-gradient(#eef3f8 1px,transparent 1px),linear-gradient(90deg,#eef3f8 1px,transparent 1px);background-size:5% 7.8125%;box-shadow:inset 0 0 0 2px #ead9bb,0 6px 18px rgba(0,0,0,.08)}
+#paperWrap canvas{position:absolute;inset:0;width:100%;height:100%}
+#edCanvas{touch-action:none}
+.lbl{position:absolute;top:50%;transform:translateY(-50%);font-weight:800;color:#c9d3df;font-size:clamp(11px,2.6vw,16px);pointer-events:none;letter-spacing:1px}
+#lblHead{left:10px}#lblTail{right:10px}
+#midLine{position:absolute;left:0;right:0;top:50%;border-top:2px dashed #b9d7f5;display:none;pointer-events:none}
+.tools{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.tool{flex:0 0 auto;border:0;background:#f0e3cc;border-radius:14px;min-width:46px;height:46px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:inherit;color:var(--ink);font-weight:700}
+.tool small{font-size:10px;line-height:1;margin-top:1px}
+.tool.on{background:var(--ink);color:#fff}
+.swatches{display:flex;gap:6px;overflow-x:auto;padding:2px}
+.sw{flex:0 0 auto;width:32px;height:32px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px #ead9bb;cursor:pointer}
+.sw.on{box-shadow:0 0 0 3px var(--ink)}
+#customColor{width:34px;height:34px;border:0;padding:0;background:none;flex:0 0 auto}
+input[type=range]{flex:1;accent-color:var(--accent)}
+.seg{display:flex;background:#f0e3cc;border-radius:14px;padding:3px;gap:3px;flex:1}
+.seg button{flex:1;border:0;background:transparent;border-radius:11px;padding:7px 4px;font:inherit;font-weight:700;font-size:13px;cursor:pointer;color:var(--ink)}
+.seg button.on{background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.lab{font-weight:700;font-size:13px;min-width:62px;color:#6b6457}
+.card{background:#fff;border-radius:16px;padding:10px 12px;margin:10px 0;box-shadow:0 2px 0 #ead9bb}
+.card h3{margin:0 0 4px;font-size:16px}
+.tpls{display:flex;gap:8px;overflow-x:auto;padding:2px}
+.tpl{flex:0 0 auto;width:74px;height:56px;border-radius:12px;border:2px solid #ead9bb;background:#fffdf7;cursor:pointer;padding:0;position:relative}
+.tpl.on{border-color:var(--accent)}
+.tpl canvas{width:100%;height:100%}
+.photoBtns{display:flex;gap:8px}
+.photoBtns .btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px}
+#photoTune{display:none}
+#release{width:100%;font-size:19px;padding:14px;margin-top:6px;border-radius:18px;box-shadow:0 4px 0 #d85a33}
+#busy{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(255,253,247,.85);font-weight:800;font-size:18px}
+/* fish card */
+#fishCard .top{display:flex;gap:12px;align-items:center}
+#fcImg{width:120px;height:84px;object-fit:contain;background:#fffdf7;border-radius:14px;box-shadow:inset 0 0 0 2px #ead9bb;padding:4px}
+#fcName{font:inherit;font-weight:800;font-size:20px;border:0;border-bottom:2px dashed #ead9bb;background:transparent;width:100%;color:var(--ink);padding:2px 0}
+.meter{height:12px;background:#f0e3cc;border-radius:8px;overflow:hidden}
+.meter i{display:block;height:100%;background:linear-gradient(90deg,#8ac926,#ffb703);border-radius:8px}
+.quote{font-style:italic;color:#6b6457;margin:8px 0}
+.stat{font-size:14px;color:#4d5670;font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+.fcell{background:#fff;border-radius:14px;padding:6px;text-align:center;cursor:pointer;box-shadow:0 2px 0 #ead9bb;font-weight:700;font-size:13px}
+.fcell img{width:100%;height:60px;object-fit:contain}
+.theme{border-radius:16px;padding:10px;cursor:pointer;color:#fff;font-weight:800;min-height:78px;display:flex;flex-direction:column;justify-content:space-between;border:3px solid transparent;position:relative;text-shadow:0 1px 3px rgba(0,0,0,.4)}
+.theme.on{border-color:#fff;box-shadow:0 0 0 3px var(--accent)}
+.theme .cost{font-size:13px;display:flex;align-items:center;gap:4px}
+.toggle{display:flex;justify-content:space-between;align-items:center;padding:8px 2px;font-weight:700}
+.sw2{width:48px;height:28px;border-radius:14px;background:#d8ccb5;position:relative;cursor:pointer;border:0;transition:.2s}
+.sw2::after{content:'';position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s}
+.sw2.on{background:var(--accent)}.sw2.on::after{left:23px}
+#gl.shake{animation:shake .35s}
+@keyframes shake{20%{transform:translate(-6px,2px)}40%{transform:translate(6px,-2px)}60%{transform:translate(-4px,1px)}80%{transform:translate(3px,0)}}
+#topR{display:flex;gap:8px;pointer-events:auto}
+#bMoon,#bHide,#bFull{border:0;cursor:pointer;font-size:18px;padding:4px 11px;color:var(--ink);min-height:34px}
+#bFull{display:none}
+body.clean #top,body.clean #bar,body.clean #hint,body.clean #toast,body.clean #emptyNote{opacity:0!important;pointer-events:none!important;transition:opacity .35s}
+#top,#bar{transition:opacity .35s}
+#bShow{position:fixed;right:calc(14px + env(safe-area-inset-right,0px));bottom:calc(14px + var(--safe-b));width:46px;height:46px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:rgba(255,255,255,.75);display:none;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+body.clean #bShow{display:flex}
+body.photo #bShow{display:none}
+@media (max-width:420px){#brand{font-size:16px;padding:4px 11px}#topR{gap:6px}#bMoon,#bHide,#bFull{padding:4px 9px}}
+.tag{display:inline-block;background:#f0e3cc;border-radius:999px;padding:2px 10px;font-size:13px;font-weight:700;margin:4px 6px 0 0}
+.fcell{position:relative}.fcell.on{box-shadow:0 0 0 3px var(--accent)}
+.callBtn{position:absolute;top:4px;right:4px;border:0;background:#ffe2b8;border-radius:50%;width:30px;height:30px;font-size:15px;cursor:pointer}
+.tpl .del{position:absolute;top:-6px;right:-6px;background:#1d2742;color:#fff;border-radius:999px;font-size:11px;min-width:20px;height:20px;line-height:20px;padding:0 5px;font-weight:800;cursor:pointer}
+.tpl .del.arm{background:#b3261e}
+.tpl img{pointer-events:none}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:0;background:#f0e3cc;border-radius:14px;padding:9px 14px;font:inherit;font-weight:700;font-size:15px;cursor:pointer;color:var(--ink)}
+.chip.on{background:var(--ink);color:#fff}
+#lblBottom{position:absolute;bottom:6px;left:0;right:0;text-align:center;font-weight:800;color:#c9d3df;font-size:clamp(11px,2.6vw,16px);pointer-events:none;letter-spacing:1px}
+#emptyNote{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%) scale(.9);background:rgba(255,248,236,.95);border-radius:24px;padding:18px 26px 16px;text-align:center;box-shadow:0 10px 34px rgba(0,20,40,.35);opacity:0;pointer-events:none;transition:.35s;cursor:pointer;max-width:84vw}
+#emptyNote.on{opacity:1;pointer-events:auto;transform:translate(-50%,-50%)}
+#emptyNote b{display:block;font-size:26px;line-height:1.15}
+#emptyNote span{display:block;color:#6b6457;font-weight:600;font-size:15px;margin-top:4px}
+#emptyNote .big{font-size:44px;line-height:1;animation:bob 2.4s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-6px) rotate(-6deg)}}
+/* photo mode */
+body.photo #top,body.photo #bar,body.photo #hint,body.photo #toast,body.photo #emptyNote{display:none}
+#photoUI{position:fixed;inset:0;pointer-events:none;display:none}
+body.photo #photoUI{display:block}
+#photoUI .corner{position:absolute;width:34px;height:34px;border:4px solid rgba(255,255,255,.9)}
+.c1{top:calc(70px + var(--safe-t));left:18px;border-right:0!important;border-bottom:0!important;border-radius:10px 0 0 0}
+.c2{top:calc(70px + var(--safe-t));right:18px;border-left:0!important;border-bottom:0!important;border-radius:0 10px 0 0}
+.c3{bottom:calc(120px + var(--safe-b));left:18px;border-right:0!important;border-top:0!important;border-radius:0 0 0 10px}
+.c4{bottom:calc(120px + var(--safe-b));right:18px;border-left:0!important;border-top:0!important;border-radius:0 0 10px 0}
+.ptop{position:absolute;top:calc(12px + var(--safe-t));left:12px;right:12px;display:flex;justify-content:space-between;align-items:center;pointer-events:auto}
+.ptop .pill{font-size:15px}
+.pbot{position:absolute;left:12px;right:12px;bottom:calc(14px + var(--safe-b));display:flex;align-items:center;gap:10px;pointer-events:auto;background:rgba(255,248,236,.92);border-radius:26px;padding:8px 10px 8px 16px;box-shadow:0 8px 26px rgba(0,20,40,.35);max-width:560px;margin:0 auto}
+#pShutter{flex:0 0 auto;width:62px;height:62px;border-radius:50%;border:5px solid #1d2742;background:#fff;cursor:pointer;box-shadow:inset 0 0 0 4px #fff,inset 0 0 0 30px var(--accent)}
+#pShutter:active{transform:scale(.92)}
+#pFreeze.on{background:#bfe6ff}
+#flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:20}
+#flash.on{animation:flash .5s}
+@keyframes flash{0%{opacity:.9}100%{opacity:0}}
+#prImg{width:100%;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.2);-webkit-touch-callout:default;user-select:auto;-webkit-user-select:auto}
+@media (max-width:420px){#bar button{width:52px;font-size:11px}#bar #bDraw{width:58px}}
+#traceUI{position:fixed;inset:0;z-index:30;background:#10151f;display:none;flex-direction:column;color:#fff;padding:calc(10px + var(--safe-t)) 12px calc(12px + var(--safe-b))}
+#traceUI.on{display:flex}
+#traceUI .thead{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+#traceUI .thead b{flex:1;font-size:19px}
+#traceWrap{flex:1;position:relative;min-height:0;border-radius:14px;overflow:hidden;background:#000}
+#traceCv{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+#traceTip{text-align:center;font-weight:700;font-size:15px;margin:8px 0;color:#d7e3f4}
+#traceUI .trow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#traceUI .btn{background:#2a3446;color:#fff}
+#traceUI .btn.primary{background:var(--accent)}
+#traceUI .btn:disabled{opacity:.4}
+#traceUI .toggle{flex:1;min-width:190px;font-size:14px;padding:4px 2px}
+#traceBusy{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);font-weight:800;font-size:18px}
+#viewSeg{display:none;pointer-events:auto;background:rgba(255,248,236,.92);border-radius:999px;padding:3px;box-shadow:0 4px 14px rgba(0,20,40,.25);gap:2px}
+body.hasGroup #viewSeg{display:flex}body.hasGroup #brand{display:none}
+#viewSeg button{border:0;background:transparent;font:inherit;font-weight:800;font-size:14px;border-radius:999px;padding:5px 12px;cursor:pointer;color:var(--ink)}
+#viewSeg button.on{background:var(--ink);color:#fff}
+body.groupView #viewSeg button.on{background:#7b5cff}
+.gsIn{width:100%;font:inherit;font-weight:600;font-size:15px;border:2px solid #ead9bb;border-radius:12px;padding:8px 10px;background:#fff;color:var(--ink);min-width:0}
+#kidName{width:100%;font:inherit;font-weight:700;font-size:20px;border:2px solid #ead9bb;border-radius:14px;padding:10px 14px;background:#fff;color:var(--ink);margin:6px 0 12px}
+#nogl{position:fixed;inset:0;display:none;align-items:center;justify-content:center;color:#fff;text-align:center;padding:30px;font-size:18px}
+@media (min-width:700px){#bar button{width:66px}.sheet{border-radius:24px 24px 0 0}}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="vignette"></div>
+<div id="nogl">Your browser couldn't start WebGL, which the aquarium needs. Try Chrome or Safari.</div>
+
+<div id="top">
+  <div class="pill" id="brand">Doodle <b>Tank</b></div>
+  <div id="viewSeg"><button data-v="mine" class="on">🏠 Mine</button><button data-v="group">👥 Group</button></div>
+  <div id="topR"><button class="pill" id="bFull" title="Full screen" aria-label="Full screen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button><button class="pill" id="bHide" title="Hide menus" aria-label="Hide menus"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.8 10.8 0 0 1 12 5c5.5 0 9 5.5 9 7 0 .7-.8 2.2-2.3 3.7M6.4 6.4C4.2 7.9 3 10.2 3 12c0 1.5 3.5 7 9 7 1.8 0 3.4-.6 4.7-1.4"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button><button class="pill" id="bMoon" title="Lights">🌙</button><div class="pill" id="scaleChip"><span class="scaleIcon"></span><span id="scaleCount">0</span></div></div>
+</div>
+<div id="hint"></div>
+<div id="emptyNote"><div class="big">🐟✏️</div><b>Draw your first fish</b><span>Tap here, or take a photo of one drawn on paper</span></div>
+
+<div id="bar">
+  <button id="bFeed"><span>🍤</span>Feed</button>
+  <button id="bClean"><span>🧽</span>Clean</button>
+  <button id="bDraw"><span>✏️</span>Draw</button>
+  <button id="bPlay"><span>🎈</span>Play</button>
+  <button id="bList"><span>🐠</span>Fish</button>
+  <button id="bTank"><span>🎨</span>Tank</button>
+</div>
+<div id="toast"></div>
+<button id="bShow" aria-label="Show menus" title="Show menus"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+<div id="scrim"></div>
+
+<!-- EDITOR -->
+<div class="sheet" id="editor">
+  <div id="edHead">
+    <button class="x" id="edClose" aria-label="Close">✕</button>
+    <input id="fishName" maxlength="24" placeholder="Name your fish…">
+  </div>
+  <div class="row"><div class="seg" id="segWhat"><button data-v="fish" class="on">🐟 Fish</button><button data-v="food">🍩 Food</button><button data-v="hat">🎩 Hat</button><button data-v="castle">🏰 Castle</button></div></div>
+  <div class="row photoBtns">
+    <button class="btn" id="bPhoto">📷 Photo of drawing</button>
+    <button class="btn" id="bGallery">🖼️ From gallery</button>
+  </div>
+  <input type="file" id="fileCam" accept="image/*" capture="environment" hidden>
+  <input type="file" id="fileGal" accept="image/*" hidden>
+  <div id="paperWrap">
+    <canvas id="guideCanvas" width="1000" height="640"></canvas>
+    <div id="midLine"></div>
+    <div class="lbl" id="lblHead">◀ HEAD</div><div class="lbl" id="lblTail">TAIL ▶</div><div id="lblBottom"></div>
+    <canvas id="edCanvas" width="1000" height="640"></canvas>
+    <div id="busy">Cutting out your fish… ✂️</div>
+  </div>
+  <div class="card" id="photoTune">
+    <h3>📸 Photo cut-out</h3>
+    <div class="row" style="display:flex;gap:8px;margin:4px 0"><button class="btn" id="bRetrace" style="flex:1">✂️ Trace again</button><button class="btn" id="bAutoAgain" style="flex:1">✨ Auto cut-out</button></div>
+    <div class="row" style="margin:4px 0"><span class="lab">Pick-up</span><input type="range" id="sens" min="1" max="10" value="5"><button class="btn" id="bReproc">Redo</button></div>
+    <div class="stat">Lower = only dark lines. Higher = grabs pale colours too. Tap ⇋ if the head isn't on the left.</div>
+  </div>
+  <div class="row tools" id="toolRow">
+    <button class="tool on" data-tool="brush">🖍️<small>Brush</small></button>
+    <button class="tool" data-tool="eraser">🩹<small>Erase</small></button>
+    <button class="tool" data-tool="fill">🪣<small>Fill</small></button>
+    <button class="tool" data-tool="eye">👁️<small>Eye</small></button>
+    <button class="tool" id="tMirror">🪞<small>Mirror</small></button>
+    <button class="tool" id="tUndo">↩️<small>Undo</small></button>
+    <button class="tool" id="tFlip">⇋<small>Flip</small></button>
+    <button class="tool" id="tClear">🗑️<small>Clear</small></button>
+  </div>
+  <div class="row"><div class="swatches" id="swatches"></div><input type="color" id="customColor" value="#ff7b54" title="Any colour"></div>
+  <div class="row"><span class="lab">Brush</span><input type="range" id="bSize" min="3" max="70" value="14"></div>
+  <div class="card" id="tplCard">
+    <h3>Trace a shape <span class="stat" style="font-weight:600">(tap again to hide)</span></h3>
+    <div class="tpls" id="tpls"></div>
+    <div class="row" id="tplRow" style="display:none;margin-bottom:0"><button class="btn" id="bStamp">🎨 Fill shape with current colour</button></div>
+  </div>
+  <div class="card" id="fishOpts">
+    <h3>How does it swim?</h3>
+    <div class="row"><span class="lab">Type</span><div class="seg" id="segKind"><button data-v="swim" class="on">🐟 Swimmer</button><button data-v="ground">🦀 Bottom</button><button data-v="drift">🪼 Drifter</button></div></div>
+    <div class="row"><span class="lab">Wiggle</span><div class="seg" id="segWig"><button data-v="0.6">Calm</button><button data-v="1" class="on">Normal</button><button data-v="1.6">Wild</button></div></div>
+    <div class="row"><span class="lab">Nature</span><div class="seg" id="segPers"><button data-v="random" class="on">🎲</button><button data-v="bold">💪 Bold</button><button data-v="shy">🙈 Shy</button><button data-v="playful">🎈 Play</button></div></div>
+    <div class="row"><span class="lab">Size</span><input type="range" id="fSize" min="55" max="170" value="100"></div>
+    <div class="toggle" style="padding-bottom:0"><span>✨ Glows in the dark</span><button class="sw2" id="tGlow"></button></div>
+  </div>
+  <div class="card"><div class="toggle" style="padding:2px"><span>Fill inside my outline <span class="stat">(paper colour)</span></span><button class="sw2 on" id="tFillIn"></button></div></div>
+  <button class="btn primary" id="release">Release into the tank 🐟</button>
+</div>
+
+<!-- FISH CARD -->
+<div class="sheet" id="fishCard">
+  <h2><span>🐟 Fish profile</span><button class="x" data-close>✕</button></h2>
+  <div class="top"><img id="fcImg" alt=""><div style="flex:1;min-width:0"><input id="fcName" maxlength="24"><div class="stat" id="fcLvl"></div><div class="stat" id="fcAge"></div></div></div>
+  <p class="quote" id="fcQuote"></p>
+  <div class="stat" style="margin-bottom:4px">Tummy</div><div class="meter"><i id="fcHunger"></i></div>
+  <div class="stat" style="margin:6px 0 4px" id="fcGoldLbl">Golden shimmer</div><div class="meter"><i id="fcGold" style="background:linear-gradient(90deg,#ffe58a,#e69a12)"></i></div>
+  <div id="fcTags"></div>
+  <p class="stat" id="fcBy" style="display:none;margin:8px 0 0;font-weight:800"></p>
+  <p class="stat" id="fcTrust" style="margin:8px 0 0"></p>
+  <p class="stat" id="fcFriend" style="margin:4px 0 6px"></p>
+  <div id="fcHatWrap"><div class="stat" style="margin-bottom:4px">🎩 Hat</div><div class="tpls" id="fcHats"></div></div>
+  <div class="row" style="display:flex;gap:8px;margin-top:10px"><button class="btn" id="fcCall" style="flex:1">📣 Call over</button><button class="btn" id="fcTrick" style="flex:1">🎪 Do a trick</button></div>
+  <div class="row" style="display:flex;gap:8px;margin-top:8px"><button class="btn primary" id="fcSend" style="flex:1;display:none">👥 Send to group tank</button></div>
+  <div class="row" style="display:flex;gap:8px;margin-top:8px"><button class="btn danger" id="fcRelease" style="flex:1">Release to sea</button></div>
+</div>
+
+<!-- FISH LIST -->
+<div class="sheet" id="fishList">
+  <h2><span>🐠 Your fish</span><button class="x" data-close>✕</button></h2>
+  <div class="grid" id="fishGrid"></div>
+  <p class="stat" id="listEmpty"></p>
+</div>
+
+<!-- TANK -->
+<div class="sheet" id="tankSheet">
+  <h2><span>🎨 Tank</span><button class="x" data-close>✕</button></h2>
+  <div style="font-weight:800;margin:2px 0 6px">Pick a tank</div>
+  <div class="grid" id="sceneGrid" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px"></div>
+  <div style="font-weight:800;margin:2px 0 4px">Water colour</div>
+  <div class="stat" style="margin-bottom:8px">Natural uses the tank's own water. Spend golden scales to unlock new water. Fish drop scales when they level up, and you earn them for cleaning.</div>
+  <div class="grid" id="themeGrid" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr))"></div>
+  <div class="card" style="margin-top:12px">
+    <div class="toggle"><span>☀️ Light rays</span><button class="sw2" id="tgRays"></button></div>
+    <div class="toggle"><span>🫧 Bubble stones</span><button class="sw2" id="tgBubbles"></button></div>
+    <div class="toggle"><span>🔊 Sound</span><button class="sw2" id="tgSound"></button></div>
+  </div>
+  <div class="card" style="margin-top:12px">
+    <h3>👥 Group tank</h3>
+    <p class="stat" id="gsStatus" style="margin:2px 0 8px"></p>
+    <div class="stat" style="margin-bottom:6px">Run your own tank server at home (see the GitHub project) and connect here. Leave blank to use your Claude account.</div>
+    <input id="gsUrl" class="gsIn" placeholder="Server address, e.g. http://192.168.1.20:8080" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <div class="row" style="display:flex;gap:8px;margin:6px 0"><input id="gsTank" class="gsIn" placeholder="Tank name (family)" style="flex:1" autocapitalize="off"><input id="gsKey" class="gsIn" type="password" placeholder="Tank key (if set)" style="flex:1"></div>
+    <div class="row" style="display:flex;gap:8px"><button class="btn primary" id="gsConnect" style="flex:1">Connect</button><button class="btn" id="gsOff" style="flex:1;display:none">Disconnect</button></div>
+    <div class="row" style="display:flex;gap:8px;margin-top:8px"><button class="btn" id="gsKid" style="flex:1">👋 Change my name</button></div>
+  </div>
+  <div class="row" style="display:flex;gap:8px"><button class="btn" id="bRedecor" style="flex:1">🪨 Rearrange rocks & plants</button></div>
+  <div class="row" style="display:flex;gap:8px"><button class="btn danger" id="bReset" style="flex:1">Empty the whole tank</button></div>
+</div>
+
+<!-- TRACE CUT-OUT -->
+<div id="traceUI">
+  <div class="thead"><b>✂️ Cut out the fish</b><button class="x" id="trClose" style="background:#2a3446;color:#fff">✕</button></div>
+  <div id="traceWrap"><canvas id="traceCv"></canvas><div id="traceBusy">Cutting out… ✂️</div></div>
+  <div id="traceTip">Draw a loop around the fish with your finger</div>
+  <div class="trow"><button class="btn" id="trRotate">⟳ Rotate</button><button class="btn" id="trRedo">↺ Redo</button><button class="btn" id="trAuto">✨ Auto</button><button class="btn primary" id="trUse" style="flex:1" disabled>Use it ✓</button></div>
+  <div class="trow" style="margin-top:6px"><div class="toggle"><span>Remove leftover paper</span><button class="sw2 on" id="trPaper"></button></div></div>
+</div>
+
+<!-- KID NAME -->
+<div class="sheet" id="kidSheet">
+  <h2><span>👋 Whose tank is this?</span><button class="x" data-close>✕</button></h2>
+  <div class="stat">Fish sent to the group tank show who drew them.</div>
+  <input id="kidName" maxlength="20" placeholder="Your name">
+  <button class="btn primary" id="kidSave" style="width:100%;padding:13px;font-size:17px">Save</button>
+</div>
+
+<!-- PLAY -->
+<div class="sheet" id="playSheet">
+  <h2><span>🎈 Play</span><button class="x" data-close>✕</button></h2>
+  <div class="card"><h3>Toys</h3><div class="chips"><button class="chip" data-toy="ball">⚽ Ball</button><button class="chip" data-toy="hoop">🎯 Hoop</button><button class="chip" data-toy="mirror">🪞 Mirror</button></div><div class="stat" style="margin-top:6px">Drag toys to move them. Flick the ball!</div></div>
+  <div class="card"><h3>Food tin</h3><div class="tpls" id="foodRow"></div><div class="stat" style="margin-top:6px">Draw your own food in ✏️ Draw → 🍩 Food</div></div>
+  <div class="card"><h3>Hat wardrobe</h3><div class="tpls" id="hatRow"></div><div class="stat" id="hatEmpty">No hats yet. Draw one in ✏️ Draw → 🎩 Hat</div></div>
+  <div class="card"><h3>Castles</h3><div class="tpls" id="castleRow"></div><div class="stat" id="castleEmpty">No castles yet. Draw one in ✏️ Draw → 🏰 Castle</div></div>
+  <div class="row" style="display:flex;gap:8px"><button class="btn" id="bLights2" style="flex:1">🌙 Lights out</button><button class="btn primary" id="bPhotoMode" style="flex:1">📸 Photo mode</button></div>
+</div>
+<!-- HAT PICKER -->
+<div class="sheet" id="hatPick">
+  <h2><span>🎩 Who wears the hat?</span><button class="x" data-close>✕</button></h2>
+  <div class="grid" id="hatGrid"></div>
+  <p class="stat" id="hatPickEmpty">No fish yet. The hat is safe in your wardrobe (🎈 Play).</p>
+  <p class="stat">Tap a fish to put the hat on, or tap again to take it off. It stays in your wardrobe either way.</p>
+</div>
+<!-- PHOTO -->
+<div id="photoUI"><div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div>
+  <div class="ptop"><div class="pill">📸 Tap a fish to focus on it</div><button class="x" id="pClose" style="background:#fff8ec">✕</button></div>
+  <div class="pbot"><span>🔍</span><input type="range" id="pZoom" min="100" max="260" value="100"><button class="btn" id="pFreeze">❄️ Freeze</button><button id="pShutter" aria-label="Take photo"></button></div>
+</div>
+<div id="flash"></div>
+<div class="sheet" id="photoRes">
+  <h2><span>📸 Your photo</span><button class="x" id="prClose">✕</button></h2>
+  <img id="prImg" alt="Aquarium photo">
+  <div class="row" style="display:flex;gap:8px;margin-top:10px"><button class="btn primary" id="prSave" style="flex:1;display:none">💾 Save photo</button></div>
+  <p class="stat" id="prNote"></p>
+</div>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const rand=(a,b)=>a+Math.random()*(b-a), clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t;
+let _s=1;const srand=s=>{_s=(s>>>0)||1},rnd=()=>{_s^=_s<<13;_s>>>=0;_s^=_s>>>17;_s^=_s<<5;_s>>>=0;return _s/4294967296},sr=(a,b)=>a+rnd()*(b-a);
+const hex2rgb=h=>{h=h.replace('#','');return[parseInt(h.slice(0,2),16)/255,parseInt(h.slice(2,4),16)/255,parseInt(h.slice(4,6),16)/255]};
+
+/* =========================== STATE / SAVE =========================== */
+const THEMES=[
+ {id:'lagoon',name:'Natural',cost:0,top:'#8be0e6',mid:'#2b93b5',deep:'#0c3a5e',sand:'#e8d3a2',light:'#fff3d6',li:1.0,rays:1.0},
+ {id:'deep',name:'Deep Blue',cost:3,top:'#4f8de0',mid:'#163f86',deep:'#040d2a',sand:'#a39579',light:'#cfe3ff',li:.85,rays:.7},
+ {id:'sunset',name:'Sunset Reef',cost:6,top:'#ffc193',mid:'#c2617c',deep:'#341b4c',sand:'#f2c58e',light:'#ffd9b0',li:1.0,rays:1.0},
+ {id:'jade',name:'Jade Pond',cost:10,top:'#c4e8a2',mid:'#4f9a6a',deep:'#12382b',sand:'#cdbd8c',light:'#f4ffd6',li:1.0,rays:.9},
+ {id:'moon',name:'Moonlit Night',cost:15,top:'#5a6aa8',mid:'#1c2350',deep:'#05061a',sand:'#77728a',light:'#bcd0ff',li:.65,rays:.6}];
+const SAVE_KEY='doodletank_v1';
+let S={scales:0,theme:'lagoon',unlocked:['lagoon'],rays:true,bubbles:true,sound:true,decorSeed:7,fish:[],tutorial:0,items:[],food:'pellet',toys:{},night:false,seen:{},scene:'reef'};
+function load(){try{const t=localStorage.getItem(SAVE_KEY);if(t)Object.assign(S,JSON.parse(t));}catch(e){}S.items=S.items||[];S.toys=S.toys||{};S.seen=S.seen||{};S.food=S.food||'pellet';if(!S.scene)S.scene='reef';}
+let saveWarned=false;
+function save(){try{if(typeof view!=='undefined'&&view==='group'){S.gstate=S.gstate||{};for(const f of fishes)S.gstate[f.id]={level:f.level,xp:f.xp,hunger:f.hunger,trust:f.trust,partyYear:f.partyYear};}else S.fish=fishes.map(f=>({id:f.id,name:f.name,kind:f.kind,wiggle:f.wiggle,size:f.size,born:f.born,xp:f.xp,level:f.level,hunger:f.hunger,friend:f.friend,tex:f.tex,pers:f.pers,trust:f.trust,glow:f.glow,hat:f.hat,partyYear:f.partyYear}));S.items=S.items;S.lastSeen=Date.now();localStorage.setItem(SAVE_KEY,JSON.stringify(S,(k,v)=>k[0]==='_'?undefined:v));}catch(e){if(!saveWarned){saveWarned=true;toast('Your browser storage is full, so the newest fish may not be saved');}}}
+load();
+const EMO=['🍤❓','💤','💕','😤','😱','👀','😊','🎂','👋','🎉','✨','😆'];
+const EI={hungry:0,sleep:1,love:2,huff:3,scared:4,look:5,happy:6,cake:7,wave:8,party:9,sparkle:10,fun:11};
+
+/* =========================== UI helpers =========================== */
+let toastT;function toast(m,ms=2600){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),ms);}
+let hintT;function hint(m,ms=3000){const h=$('#hint');h.textContent=m;h.classList.add('on');clearTimeout(hintT);if(ms)hintT=setTimeout(()=>h.classList.remove('on'),ms);}
+function hideHint(){$('#hint').classList.remove('on')}
+let openSheet=null;
+function showSheet(id){closeSheet();const el=$(id);el.classList.add('open');if(id!=='#editor')$('#scrim').classList.add('on');openSheet=el;}
+function closeSheet(){if(openSheet){openSheet.classList.remove('open');openSheet=null;}$('#scrim').classList.remove('on');}
+$('#scrim').onclick=closeSheet;$$('[data-close]').forEach(b=>b.onclick=closeSheet);
+function setScales(n){S.scales=n;$('#scaleCount').textContent=n;const c=$('#scaleChip');c.classList.remove('bump');void c.offsetWidth;c.classList.add('bump');}
+$('#scaleCount').textContent=S.scales;
+
+/* =========================== AUDIO =========================== */
+let AC=null,master=null;
+function audioInit(){if(AC)return;try{AC=new (window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=S.sound?1:0;master.connect(AC.destination);
+ const len=AC.sampleRate*3,buf=AC.createBuffer(1,len,AC.sampleRate),d=buf.getChannelData(0);let l=0;for(let i=0;i<len;i++){const w=Math.random()*2-1;l=(l+0.02*w)/1.02;d[i]=l*3.2;}
+ const src=AC.createBufferSource();src.buffer=buf;src.loop=true;const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=420;const g=AC.createGain();g.gain.value=0.16;src.connect(lp);lp.connect(g);g.connect(master);src.start();}catch(e){AC=null}}
+function env(g,t,a,peak,dec){g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(peak,t+a);g.gain.exponentialRampToValueAtTime(0.0001,t+a+dec);}
+function sBlip(vol=0.08,f0=500){if(!AC||!S.sound)return;const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f0*2.6,t+0.07);env(g,t,0.005,vol,0.08);o.connect(g);g.connect(master);o.start(t);o.stop(t+0.12);}
+function sPlop(){if(!AC||!S.sound)return;const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.setValueAtTime(420,t);o.frequency.exponentialRampToValueAtTime(110,t+0.25);env(g,t,0.01,0.25,0.3);o.connect(g);g.connect(master);o.start(t);o.stop(t+0.4);for(let i=0;i<5;i++)setTimeout(()=>sBlip(0.05,400+Math.random()*500),120+i*70);}
+function sChime(){if(!AC||!S.sound)return;const t=AC.currentTime;[1046,1568,2093].forEach((f,i)=>{const o=AC.createOscillator(),g=AC.createGain();o.type='triangle';o.frequency.value=f;env(g,t+i*0.07,0.005,0.09,0.5);o.connect(g);g.connect(master);o.start(t+i*0.07);o.stop(t+i*0.07+0.6);});}
+function sNom(){if(!AC||!S.sound)return;const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();o.type='triangle';o.frequency.setValueAtTime(260,t);o.frequency.exponentialRampToValueAtTime(140,t+0.06);env(g,t,0.004,0.07,0.06);o.connect(g);g.connect(master);o.start(t);o.stop(t+0.1);}
+function sLevel(){if(!AC||!S.sound)return;const t=AC.currentTime;[523,659,784,1046].forEach((f,i)=>{const o=AC.createOscillator(),g=AC.createGain();o.type='triangle';o.frequency.value=f;env(g,t+i*0.09,0.005,0.1,0.35);o.connect(g);g.connect(master);o.start(t+i*0.09);o.stop(t+i*0.09+0.5);});}
+function sSquee(){if(!AC||!S.sound)return;const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.setValueAtTime(700,t);o.frequency.exponentialRampToValueAtTime(1300,t+0.12);o.frequency.exponentialRampToValueAtTime(900,t+0.22);env(g,t,0.01,0.08,0.22);o.connect(g);g.connect(master);o.start(t);o.stop(t+0.3);}
+function tone(type,f0,f1,dur,vol,delay){if(!AC||!S.sound)return;const t=AC.currentTime+(delay||0),o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f1,t+dur);env(g,t,0.006,vol,dur);o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+0.05);}
+function sThud(){tone('sine',140,45,0.25,0.35);tone('triangle',90,40,0.2,0.2,0.02);}
+function sKiss(){tone('sine',1400,2200,0.06,0.07);tone('sine',1500,2400,0.06,0.07,0.09);}
+function sBoing(){tone('triangle',300,700,0.12,0.06);tone('triangle',700,350,0.18,0.05,0.12);}
+function sSwish(){if(!AC||!S.sound)return;const t=AC.currentTime,len=AC.sampleRate*0.35|0,b=AC.createBuffer(1,len,AC.sampleRate),d=b.getChannelData(0);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.sin(Math.PI*i/len);const s=AC.createBufferSource();s.buffer=b;const bp=AC.createBiquadFilter();bp.type='bandpass';bp.frequency.setValueAtTime(600,t);bp.frequency.exponentialRampToValueAtTime(2600,t+0.3);const g=AC.createGain();g.gain.value=0.25;s.connect(bp);bp.connect(g);g.connect(master);s.start(t);sChime();}
+function sBounce(v){tone('sine',220,140,0.1,v||0.05);}
+function sPurr(){for(let i=0;i<4;i++)tone('sine',520+i*40,600+i*40,0.12,0.04,i*0.1);}
+function sHuff(){tone('sawtooth',180,120,0.18,0.04);}
+function sClick(){tone('square',900,600,0.03,0.04);}
+function sShutter(){tone('square',2000,800,0.04,0.05);tone('square',1500,600,0.05,0.05,0.07);}
+function sParty(){[523,659,784,1046,784,1046].forEach((f,i)=>tone('triangle',f,f,0.16,0.08,i*0.12));for(let i=0;i<6;i++)tone('sine',800+Math.random()*900,1600,0.05,0.03,0.2+i*0.08);}
+document.addEventListener('pointerdown',()=>{audioInit();if(AC&&AC.state==='suspended')AC.resume();},{capture:true});
+
+/* =========================== IMAGE PROCESSING =========================== */
+// chamfer distance: distance from each "1" pixel to nearest "0"; oobInside: treat outside image as 1
+function chamfer(m,w,h,oobInside){const d=new Float32Array(w*h),INF=1e9,ob=oobInside?INF:0,D=1.4142;
+ for(let i=0;i<w*h;i++)d[i]=m[i]?INF:0;
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;let v=d[i];if(!v)continue;
+  const l=x>0?d[i-1]:ob,u=y>0?d[i-w]:ob,ul=x>0&&y>0?d[i-w-1]:ob,ur=x<w-1&&y>0?d[i-w+1]:ob;
+  v=Math.min(v,l+1,u+1,ul+D,ur+D);d[i]=v;}
+ for(let y=h-1;y>=0;y--)for(let x=w-1;x>=0;x--){const i=y*w+x;let v=d[i];if(!v)continue;
+  const r=x<w-1?d[i+1]:ob,b=y<h-1?d[i+w]:ob,br=x<w-1&&y<h-1?d[i+w+1]:ob,bl=x>0&&y<h-1?d[i+w-1]:ob;
+  v=Math.min(v,r+1,b+1,br+D,bl+D);d[i]=v;}
+ return d;}
+function dilate(m,w,h,r){const inv=new Uint8Array(w*h);for(let i=0;i<w*h;i++)inv[i]=m[i]?0:1;const d=chamfer(inv,w,h,true),o=new Uint8Array(w*h);for(let i=0;i<w*h;i++)o[i]=(m[i]||d[i]<=r)?1:0;return o;}
+function erode(m,w,h,r){const d=chamfer(m,w,h,false),o=new Uint8Array(w*h);for(let i=0;i<w*h;i++)o[i]=d[i]>r?1:0;return o;}
+function floodBorder(block,w,h){const seen=new Uint8Array(w*h),q=new Int32Array(w*h);let qh=0,qt=0;
+ const push=i=>{if(!block[i]&&!seen[i]){seen[i]=1;q[qt++]=i;}};
+ for(let x=0;x<w;x++){push(x);push((h-1)*w+x);}for(let y=0;y<h;y++){push(y*w);push(y*w+w-1);}
+ while(qh<qt){const i=q[qh++],x=i%w,y=(i/w)|0;if(x>0)push(i-1);if(x<w-1)push(i+1);if(y>0)push(i-w);if(y<h-1)push(i+w);}return seen;}
+function components(m,w,h){const lab=new Int32Array(w*h),comps=[],q=new Int32Array(w*h);let n=0;
+ for(let s=0;s<w*h;s++){if(!m[s]||lab[s])continue;n++;let qh=0,qt=0;q[qt++]=s;lab[s]=n;let area=0,x0=w,x1=0,y0=h,y1=0;
+  while(qh<qt){const i=q[qh++],x=i%w,y=(i/w)|0;area++;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
+   const nb=[x>0?i-1:-1,x<w-1?i+1:-1,y>0?i-w:-1,y<h-1?i+w:-1];for(const j of nb)if(j>=0&&m[j]&&!lab[j]){lab[j]=n;q[qt++]=j;}}
+  comps.push({id:n,area,x0,x1,y0,y1,border:x0<=2||y0<=2||x1>=w-3||y1>=h-3});}
+ return{lab,comps};}
+
+// Fill inside outlines, then crop. Input: canvas. Output: cropped canvas (max 256) or null
+function finalizeDrawing(src,fillInside,fillHex){
+ const w=src.width,h=src.height,ctx=src.getContext('2d'),id=ctx.getImageData(0,0,w,h),p=id.data;
+ const m=new Uint8Array(w*h);let cnt=0;for(let i=0;i<w*h;i++)if(p[i*4+3]>40){m[i]=1;cnt++;}
+ if(cnt<150)return null;
+ if(fillInside){const closed=dilate(m,w,h,4),reach=floodBorder(closed,w,h),inner=new Uint8Array(w*h);for(let i=0;i<w*h;i++)inner[i]=reach[i]?0:1;
+  const inn=erode(inner,w,h,4),[fr,fg,fb]=hex2rgb(fillHex).map(v=>v*255);
+  for(let i=0;i<w*h;i++){if(!inn[i])continue;const a=p[i*4+3]/255;if(a>=1)continue;p[i*4]=p[i*4]*a+fr*(1-a);p[i*4+1]=p[i*4+1]*a+fg*(1-a);p[i*4+2]=p[i*4+2]*a+fb*(1-a);p[i*4+3]=255;}}
+ let x0=w,y0=h,x1=-1,y1=-1;for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(p[(y*w+x)*4+3]>20){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
+ if(x1<0)return null;const pad=3;x0=Math.max(0,x0-pad);y0=Math.max(0,y0-pad);x1=Math.min(w-1,x1+pad);y1=Math.min(h-1,y1+pad);
+ const tmp=document.createElement('canvas');tmp.width=w;tmp.height=h;tmp.getContext('2d').putImageData(id,0,0);
+ const cw=x1-x0+1,ch=y1-y0+1,sc=Math.min(1,256/Math.max(cw,ch)),out=document.createElement('canvas');out.width=Math.max(8,Math.round(cw*sc));out.height=Math.max(8,Math.round(ch*sc));
+ const oc=out.getContext('2d');oc.imageSmoothingQuality='high';oc.drawImage(tmp,x0,y0,cw,ch,0,0,out.width,out.height);return out;}
+
+// Photo of a paper drawing -> cut-out canvas
+function processPhoto(img,sens){
+ const MAX=720,sc=Math.min(1,MAX/Math.max(img.naturalWidth||img.width,img.naturalHeight||img.height));
+ const w=Math.max(16,Math.round((img.naturalWidth||img.width)*sc)),h=Math.max(16,Math.round((img.naturalHeight||img.height)*sc));
+ const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(img,0,0,w,h);
+ const id=ctx.getImageData(0,0,w,h),p=id.data,N=w*h,L=new Float32Array(N);
+ for(let i=0;i<N;i++)L[i]=0.299*p[i*4]+0.587*p[i*4+1]+0.114*p[i*4+2];
+ // background (paper) brightness estimate: block 90th percentile -> 5x5 max -> blur
+ const B=18,bw=Math.ceil(w/B),bh=Math.ceil(h/B),blk=new Float32Array(bw*bh);
+ for(let by=0;by<bh;by++)for(let bx=0;bx<bw;bx++){const arr=[];for(let y=by*B;y<Math.min(h,by*B+B);y+=2)for(let x=bx*B;x<Math.min(w,bx*B+B);x+=2)arr.push(L[y*w+x]);arr.sort((a,b)=>a-b);blk[by*bw+bx]=arr[Math.floor(arr.length*0.9)]||255;}
+ const mx=new Float32Array(bw*bh),bl=new Float32Array(bw*bh);
+ for(let y=0;y<bh;y++)for(let x=0;x<bw;x++){let v=0;for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const xx=clamp(x+dx,0,bw-1),yy=clamp(y+dy,0,bh-1);v=Math.max(v,blk[yy*bw+xx]);}mx[y*bw+x]=v;}
+ for(let y=0;y<bh;y++)for(let x=0;x<bw;x++){let v=0,n=0;for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=bw||yy>=bh)continue;v+=mx[yy*bw+xx];n++;}bl[y*bw+x]=v/n;}
+ const bg=new Float32Array(N);for(let y=0;y<h;y++){const fy=clamp(y/B-0.5,0,bh-1),y0=Math.floor(fy),y1=Math.min(bh-1,y0+1),ty=fy-y0;for(let x=0;x<w;x++){const fx=clamp(x/B-0.5,0,bw-1),x0=Math.floor(fx),x1=Math.min(bw-1,x0+1),tx=fx-x0;
+  bg[y*w+x]=Math.max(30,lerp(lerp(bl[y0*bw+x0],bl[y0*bw+x1],tx),lerp(bl[y1*bw+x0],bl[y1*bw+x1],tx),ty));}}
+ const thr=0.32-sens*0.022,cthr=0.36-sens*0.022,ink=new Uint8Array(N);
+ for(let i=0;i<N;i++){const r=p[i*4],g=p[i*4+1],b=p[i*4+2],ratio=L[i]/bg[i],chroma=(Math.max(r,g,b)-Math.min(r,g,b))/bg[i];if(ratio<1-thr||(chroma>cthr&&ratio<1.02))ink[i]=1;}
+ const closed=dilate(ink,w,h,3),{lab,comps}=components(closed,w,h);
+ if(!comps.length)return null;
+ let cand=comps.filter(c=>!c.border&&c.area>N*0.002);if(!cand.length)cand=comps.slice();cand.sort((a,b)=>b.area-a.area);
+ const main=cand[0],keep=new Set(cand.filter(c=>c.area>=main.area*0.08).map(c=>c.id));
+ const kept=new Uint8Array(N);for(let i=0;i<N;i++)if(keep.has(lab[i]))kept[i]=1;
+ const reach=floodBorder(kept,w,h),inner=new Uint8Array(N);for(let i=0;i<N;i++)inner[i]=reach[i]?0:1;
+ const shape=erode(inner,w,h,3);
+ // colour correction: divide by paper brightness, boost saturation
+ const out=ctx.createImageData(w,h),o=out.data;let x0=w,y0=h,x1=-1,y1=-1;
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;if(!shape[i])continue;const k=255/bg[i]*1.04;
+  let r=Math.min(255,p[i*4]*k),g=Math.min(255,p[i*4+1]*k),b=Math.min(255,p[i*4+2]*k);const l=(r+g+b)/3;
+  r=clamp(l+(r-l)*1.35,0,255);g=clamp(l+(g-l)*1.35,0,255);b=clamp(l+(b-l)*1.35,0,255);
+  const cf=v=>255*Math.pow(v/255,1.12);o[i*4]=cf(r);o[i*4+1]=cf(g);o[i*4+2]=cf(b);
+  const edge=(x>0&&!shape[i-1])||(x<w-1&&!shape[i+1])||(y>0&&!shape[i-w])||(y<h-1&&!shape[i+w]);o[i*4+3]=edge?170:255;
+  if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
+ if(x1<0||(x1-x0)<12||(y1-y0)<8)return null;
+ const t2=document.createElement('canvas');t2.width=w;t2.height=h;t2.getContext('2d').putImageData(out,0,0);
+ const cc=document.createElement('canvas');cc.width=x1-x0+1;cc.height=y1-y0+1;cc.getContext('2d').drawImage(t2,-x0,-y0);return cc;}
+
+/* =========================== WEBGL CORE =========================== */
+const cv=$('#gl');
+const gl=cv.getContext('webgl',{antialias:true,alpha:false,premultipliedAlpha:false,powerPreference:'high-performance'});
+if(!gl){$('#nogl').style.display='flex';}
+const FOV=45*Math.PI/180,CAM=[0,0.7,13],LOOK=[0,-0.35,0];
+let W=1,H=1,DPR=1,aspect=1,VP=new Float32Array(16),VIEW,PROJ,invVP;
+const T={}; // tank dims
+function mmul(a,b){const o=new Float32Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++){let s=0;for(let k=0;k<4;k++)s+=a[k*4+r]*b[c*4+k];o[c*4+r]=s;}return o;}
+function persp(f,a,n,fa){const t=1/Math.tan(f/2),nf=1/(n-fa);return new Float32Array([t/a,0,0,0,0,t,0,0,0,0,(fa+n)*nf,-1,0,0,2*fa*n*nf,0]);}
+function lookAt(e,c,u){let z=[e[0]-c[0],e[1]-c[1],e[2]-c[2]];let l=Math.hypot(...z);z=z.map(v=>v/l);let x=[u[1]*z[2]-u[2]*z[1],u[2]*z[0]-u[0]*z[2],u[0]*z[1]-u[1]*z[0]];l=Math.hypot(...x);x=x.map(v=>v/l);const y=[z[1]*x[2]-z[2]*x[1],z[2]*x[0]-z[0]*x[2],z[0]*x[1]-z[1]*x[0]];
+ return new Float32Array([x[0],y[0],z[0],0,x[1],y[1],z[1],0,x[2],y[2],z[2],0,-(x[0]*e[0]+x[1]*e[1]+x[2]*e[2]),-(y[0]*e[0]+y[1]*e[1]+y[2]*e[2]),-(z[0]*e[0]+z[1]*e[1]+z[2]*e[2]),1]);}
+function inv4(m){const a=m,o=new Float32Array(16);const a00=a[0],a01=a[1],a02=a[2],a03=a[3],a10=a[4],a11=a[5],a12=a[6],a13=a[7],a20=a[8],a21=a[9],a22=a[10],a23=a[11],a30=a[12],a31=a[13],a32=a[14],a33=a[15];
+ const b00=a00*a11-a01*a10,b01=a00*a12-a02*a10,b02=a00*a13-a03*a10,b03=a01*a12-a02*a11,b04=a01*a13-a03*a11,b05=a02*a13-a03*a12,b06=a20*a31-a21*a30,b07=a20*a32-a22*a30,b08=a20*a33-a23*a30,b09=a21*a32-a22*a31,b10=a21*a33-a23*a31,b11=a22*a33-a23*a32;
+ let det=b00*b11-b01*b10+b02*b09+b03*b08-b04*b07+b05*b06;det=1/det;
+ o[0]=(a11*b11-a12*b10+a13*b09)*det;o[1]=(a02*b10-a01*b11-a03*b09)*det;o[2]=(a31*b05-a32*b04+a33*b03)*det;o[3]=(a22*b04-a21*b05-a23*b03)*det;o[4]=(a12*b08-a10*b11-a13*b07)*det;o[5]=(a00*b11-a02*b08+a03*b07)*det;o[6]=(a32*b02-a30*b05-a33*b01)*det;o[7]=(a20*b05-a22*b02+a23*b01)*det;o[8]=(a10*b10-a11*b08+a13*b06)*det;o[9]=(a01*b08-a00*b10-a03*b06)*det;o[10]=(a30*b04-a31*b02+a33*b00)*det;o[11]=(a21*b02-a20*b04-a23*b00)*det;o[12]=(a11*b07-a10*b09-a12*b06)*det;o[13]=(a00*b09-a01*b07+a02*b06)*det;o[14]=(a31*b01-a30*b03-a32*b00)*det;o[15]=(a20*b03-a21*b01+a22*b00)*det;return o;}
+function project(p){const m=VP,x=p[0],y=p[1],z=p[2],cx=m[0]*x+m[4]*y+m[8]*z+m[12],cy=m[1]*x+m[5]*y+m[9]*z+m[13],cw=m[3]*x+m[7]*y+m[11]*z+m[15];return[(cx/cw*0.5+0.5)*W,(1-(cy/cw*0.5+0.5))*H,cw];}
+function screenToPlaneZ(sx,sy,zp){const nx=sx/W*2-1,ny=1-sy/H*2;const un=(x,y,z)=>{const m=invVP,X=m[0]*x+m[4]*y+m[8]*z+m[12],Y=m[1]*x+m[5]*y+m[9]*z+m[13],Z=m[2]*x+m[6]*y+m[10]*z+m[14],Wd=m[3]*x+m[7]*y+m[11]*z+m[15];return[X/Wd,Y/Wd,Z/Wd];};
+ const a=un(nx,ny,-1),b=un(nx,ny,1),t=(zp-a[2])/(b[2]-a[2]);return[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,zp];}
+function xLim(z,half){return Math.tan(FOV/2)*aspect*(CAM[2]-z)*0.9-half;}
+
+const HDR=`#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+`;
+const COMMON=HDR+`uniform vec3 uTop,uMid,uDeep,uLight;uniform vec2 uRes;uniform float uMurk,uTime;
+vec3 bgGrad(float y){vec3 c=mix(uDeep,uMid,smoothstep(0.0,0.58,y));c=mix(c,uTop,smoothstep(0.52,1.0,y));return mix(c,c*vec3(0.78,0.95,0.55),uMurk*0.55);}
+vec3 fog(vec3 c,float d){float f=clamp((d-9.5)/24.0,0.0,1.0);f=f*f*(3.0-2.0*f);f=max(f,uMurk*0.3*clamp(d/16.0,0.0,1.0));return mix(c,bgGrad(gl_FragCoord.y/uRes.y),f);}
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
+float caustic(vec2 uv,float time){vec2 p=mod(uv*6.2831853,6.2831853)-250.0;vec2 i=p;float c=1.0;float inten=0.005;
+for(int n=0;n<4;n++){float t=time*(1.0-(3.5/float(n+1)));i=p+vec2(cos(t-i.x)+sin(t+i.y),sin(t-i.y)+cos(t+i.x));c+=1.0/length(vec2(p.x/(sin(i.x+t)/inten),p.y/(cos(i.y+t)/inten)));}
+c/=4.0;c=1.17-pow(c,1.4);return clamp(pow(abs(c),8.0),0.0,1.0);}
+`;
+function prog(vs,fs){const p=gl.createProgram();for(const[t,s]of[[gl.VERTEX_SHADER,vs],[gl.FRAGMENT_SHADER,fs]]){const sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(sh));gl.attachShader(p,sh);}
+ gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));const o={p,a:{},u:{}};
+ for(let i=0,n=gl.getProgramParameter(p,gl.ACTIVE_ATTRIBUTES);i<n;i++){const nm=gl.getActiveAttrib(p,i).name;o.a[nm]=gl.getAttribLocation(p,nm);}
+ for(let i=0,n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);i<n;i++){const nm=gl.getActiveUniform(p,i).name.replace('[0]','');o.u[nm]=gl.getUniformLocation(p,nm);}return o;}
+let curAttribs=0;
+function bindAttribs(o,buf,stride,layout){gl.bindBuffer(gl.ARRAY_BUFFER,buf);for(let i=0;i<8;i++)gl.disableVertexAttribArray(i);
+ for(const[nm,sz,off]of layout){const loc=o.a[nm];if(loc===undefined||loc<0)continue;gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,sz,gl.FLOAT,false,stride*4,off*4);}}
+const u1=(o,n,v)=>{if(o.u[n])gl.uniform1f(o.u[n],v)},u2=(o,n,a,b)=>{if(o.u[n])gl.uniform2f(o.u[n],a,b)},u3=(o,n,v)=>{if(o.u[n])gl.uniform3fv(o.u[n],v)},u4=(o,n,v)=>{if(o.u[n])gl.uniform4fv(o.u[n],v)},uM=(o,n,m)=>{if(o.u[n])gl.uniformMatrix4fv(o.u[n],false,m)};
+
+let P={};
+const FS_VS=`attribute vec2 aP;varying vec2 vUv;void main(){vUv=aP*0.5+0.5;gl_Position=vec4(aP,0.9999,1.0);}`;
+function buildPrograms(){
+ P.bg=prog(FS_VS,COMMON+`varying vec2 vUv;uniform float uRays;
+ void main(){vec2 uv=vUv;vec3 c=bgGrad(uv.y);float asp=uRes.x/uRes.y;float x=(uv.x-0.5)*asp;
+  float hill=0.36+0.07*noise(vec2(x*1.4,1.0))+0.04*noise(vec2(x*4.0,3.0));
+  float far=smoothstep(hill+0.012,hill-0.012,uv.y);c=mix(c,bgGrad(uv.y-0.1)*0.82,far*0.55);
+  float kx=x*6.0+sin(uv.y*7.0+uTime*0.5)*0.18;float on=step(0.62,hash(vec2(floor(kx),7.0)));
+  float strand=on*smoothstep(0.12,0.0,abs(fract(kx)-0.5)-0.05)*smoothstep(0.78,0.38,uv.y)*smoothstep(hill-0.25,hill,uv.y);
+  c=mix(c,bgGrad(0.18)*0.9,strand*0.35);
+  float qx=x+(1.0-uv.y)*0.4;float r=pow(noise(vec2(qx*2.6+uTime*0.05,0.5)),3.0)+0.6*pow(noise(vec2(qx*6.5-uTime*0.08,5.0)),4.0);
+  c+=uLight*r*uRays*smoothstep(0.15,1.0,uv.y)*0.32;
+  float s=smoothstep(0.9,1.0,uv.y);float w=noise(vec2(x*9.0+uTime*0.5,uTime*0.35+uv.y*24.0));c+=uLight*s*(0.18+0.55*w*w);
+  gl_FragColor=vec4(c,1.0);}`);
+ P.rays=prog(FS_VS,COMMON+`varying vec2 vUv;uniform float uRays;
+ void main(){vec2 uv=vUv;float asp=uRes.x/uRes.y;float x=(uv.x-0.5)*asp+(1.0-uv.y)*0.42;
+  float r=pow(noise(vec2(x*2.4+uTime*0.045,uTime*0.06)),2.6)*0.85+pow(noise(vec2(x*5.5-uTime*0.07,3.0+uTime*0.04)),3.0)*0.55;
+  float fall=smoothstep(0.05,1.0,uv.y);fall*=fall;gl_FragColor=vec4(uLight*r*fall*uRays*0.2,1.0);}`);
+ P.floor=prog(`attribute vec3 aP;uniform mat4 uVP;varying vec3 vW;void main(){vW=aP;gl_Position=uVP*vec4(aP,1.0);}`,COMMON+`varying vec3 vW;uniform vec3 uSand,uCam;uniform float uCaus;
+ void main(){vec2 p=vW.xz;float g=noise(p*16.0)*0.5+noise(p*55.0)*0.5;float rip=sin(p.x*2.4+noise(p*0.7)*5.0+p.y*0.7);
+  vec3 c=uSand*(0.8+0.2*g)*(0.9+0.1*rip)*(0.82+0.18*noise(p*0.35));
+  c*=0.62+0.25*uLight;c+=uLight*caustic(p*0.2,uTime*0.45)*uCaus*0.5;
+  float d=length(vW-uCam);gl_FragColor=vec4(fog(c,d),1.0);}`);
+ P.lit=prog(`attribute vec3 aP,aN,aC;uniform mat4 uVP;varying vec3 vW,vN,vC;void main(){vW=aP;vN=aN;vC=aC;gl_Position=uVP*vec4(aP,1.0);}`,COMMON+`varying vec3 vW,vN,vC;uniform vec3 uCam;uniform float uCaus;
+ void main(){vec3 n=normalize(vN);vec3 L=normalize(vec3(0.35,1.0,0.45));float dif=max(dot(n,L),0.0);vec3 amb=mix(uDeep*1.3,uTop,n.y*0.5+0.5)*0.5;
+  vec3 c=vC*(amb+uLight*dif*0.7+0.12);c+=uLight*caustic(vW.xz*0.2+vW.y*0.04,uTime*0.45)*max(n.y,0.0)*uCaus*0.4;
+  gl_FragColor=vec4(fog(c,length(vW-uCam)),1.0);}`);
+ P.plant=prog(`attribute vec3 aB,aL,aC;attribute float aS;uniform mat4 uVP;uniform float uTime;varying vec3 vW,vC;varying float vT;
+ void main(){float t=aL.y,h=aL.z,sd=fract(aS)*9.0,st=1.0-floor(aS)*0.1;float sw=(sin(uTime*(0.6+sd*0.5)+sd*6.28+t*2.0)*0.2*h*t*t+sin(uTime*1.6+sd*3.0+t*5.0)*0.035*h*t)*st;
+  vec3 p=aB+vec3(aL.x+sw,t*h,sin(uTime*0.8+sd*4.0)*0.12*t*h*st);vW=p;vC=aC;vT=t;gl_Position=uVP*vec4(p,1.0);}`,COMMON+`varying vec3 vW,vC;varying float vT;uniform vec3 uCam;uniform float uCaus;
+ void main(){vec3 c=vC*(0.42+0.55*vT)*(0.55+0.45*uLight)+uTop*0.06;c+=uLight*caustic(vW.xz*0.2+vW.y*0.06,uTime*0.45)*uCaus*0.18*vT;gl_FragColor=vec4(fog(c,length(vW-uCam)),1.0);}`);
+ P.fish=prog(`attribute vec3 aP,aN;attribute vec2 aUv;uniform mat4 uVP,uModel;uniform float uPhase,uAmp,uScale;varying vec2 vUv;varying vec3 vN,vW;
+ void main(){vec3 p=aP;vec3 n=aN;float t=clamp(p.x+0.5,0.0,1.0);float env=0.1+t*t*1.15;float k=5.2;
+  float s=sin(uPhase-t*k),c=cos(uPhase-t*k);float w=uAmp*env*s;float dw=uAmp*(2.3*t*s-env*k*c);
+  p.z+=w;p.y+=uAmp*0.12*t*t*c;n=normalize(vec3(n.x-dw*n.z,n.y,n.z));
+  vec4 wp=uModel*vec4(p,1.0);vW=wp.xyz;vN=normalize((uModel*vec4(n,0.0)).xyz/uScale);vUv=aUv;gl_Position=uVP*wp;}`,COMMON+`varying vec2 vUv;varying vec3 vN,vW;uniform sampler2D uTex;uniform vec3 uCam;uniform float uGold,uFlash,uCaus,uFade,uBlush,uGlow,uNight;
+ void main(){vec4 tx=texture2D(uTex,vUv);if(tx.a<0.5)discard;vec3 n=normalize(vN);vec3 L=normalize(vec3(0.35,1.0,0.6));vec3 V=normalize(uCam-vW);
+  float dif=max(dot(n,L),0.0);vec3 amb=mix(uDeep*1.2,uTop,n.y*0.5+0.5)*0.45;vec3 base=tx.rgb;
+  vec3 col=base*(amb+uLight*dif*0.62+0.3);vec3 Hh=normalize(L+V);float nh=max(dot(n,Hh),0.0);col+=uLight*pow(nh,30.0)*0.28;
+  col+=uLight*caustic(vW.xz*0.2+vW.y*0.05,uTime*0.45)*max(n.y,0.0)*uCaus*0.3;
+  if(uGold>0.0){float fr=pow(1.0-max(dot(n,V),0.0),2.0);float sweep=smoothstep(0.82,1.0,sin(vW.x*1.6-vW.y*1.2+uTime*1.7)*0.5+0.5);
+   vec3 g=vec3(1.0,0.78,0.32);vec3 gc=base*g*0.55+g*(0.22*dif+fr*0.6+sweep*0.5)+g*pow(nh,10.0)*0.9;col=mix(col,gc,uGold*0.7);}
+  col=mix(col,col*vec3(1.15,0.86,0.92)+vec3(0.16,0.03,0.07),uBlush*0.6);
+  col=mix(col,base*1.2+vec3(0.12),uGlow*uNight*0.85);
+  col+=uFlash*vec3(0.35,0.3,0.2);if(uGlow*uNight>0.0){gl_FragColor=vec4(mix(col,fog(col,length(vW-uCam)),1.0-uGlow*uNight*0.7),1.0);return;}gl_FragColor=vec4(fog(col,length(vW-uCam)),1.0);}`);
+ P.pts=prog(`attribute vec3 aP;attribute float aS,aA;uniform mat4 uVP;uniform float uPx;varying float vA;
+ void main(){vec4 c=uVP*vec4(aP,1.0);gl_Position=c;gl_PointSize=max(1.5,aS*uPx/c.w);vA=aA;}`,COMMON+`varying float vA;uniform int uKind;
+ void main(){vec2 q=gl_PointCoord-0.5;float d=length(q)*2.0;if(d>1.0)discard;
+  if(uKind==0){float rim=smoothstep(0.62,0.95,d)*(1.0-smoothstep(0.95,1.0,d));float hl=smoothstep(0.28,0.0,length(q-vec2(-0.17,-0.17)));
+   float a=(0.1+rim*0.65+hl*0.9)*vA;gl_FragColor=vec4(mix(vec3(0.75,0.92,1.0),vec3(1.0),hl),a);}
+  else if(uKind==1){float hl=smoothstep(0.5,0.0,length(q-vec2(-0.15,-0.15)));gl_FragColor=vec4(mix(vec3(0.62,0.33,0.12),vec3(1.0,0.75,0.45),hl*0.8),smoothstep(1.0,0.75,d)*vA);}
+  else{gl_FragColor=vec4(mix(uTop,vec3(1.0),0.6),(1.0-d)*vA*0.5);}}`);
+ P.spr=prog(`attribute vec2 aQ;uniform mat4 uVP;uniform vec3 uC,uR,uU;uniform vec2 uSz;uniform float uRot,uFlat;varying vec2 vUv;
+ void main(){vec2 q=aQ;float cr=cos(uRot),sn=sin(uRot);q=vec2(q.x*cr-q.y*sn,q.x*sn+q.y*cr);vec3 p;
+  if(uFlat>0.5)p=uC+vec3(q.x*uSz.x,0.0,-q.y*uSz.y);else p=uC+uR*q.x*uSz.x+uU*q.y*uSz.y;vUv=aQ*vec2(0.5,-0.5)+0.5;gl_Position=uVP*vec4(p,1.0);}`,HDR+`varying vec2 vUv;uniform sampler2D uTex;uniform vec4 uCell,uTint;uniform float uCut;
+ void main(){vec4 t=texture2D(uTex,uCell.xy+vUv*uCell.zw);if(t.a*uTint.a<uCut)discard;gl_FragColor=vec4(t.rgb*uTint.rgb,t.a*uTint.a);}`);
+}
+
+/* buffers */
+let quadBuf,sprBuf,floorBuf,litBuf,litCount=0,plantBuf,plantCount=0,ptBuf,atlasTex,emoTex,hoopBuf=null,hoopCount=0;
+function mkBuf(data,usage){const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,data,usage||gl.STATIC_DRAW);return b;}
+function initBuffers(){quadBuf=mkBuf(new Float32Array([-1,-1,3,-1,-1,3]));sprBuf=mkBuf(new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]));ptBuf=gl.createBuffer();}
+const V3={sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],add:(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]],mul:(a,k)=>[a[0]*k,a[1]*k,a[2]*k],len:a=>Math.hypot(a[0],a[1],a[2]),norm:a=>{const l=Math.hypot(a[0],a[1],a[2])||1;return[a[0]/l,a[1]/l,a[2]/l]},dist:(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2])};
+const ease=t=>t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+
+/* atlas (sprites) */
+const NC=12;
+function texFromCanvas(c,mip){const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,c);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);return t;}
+function buildAtlas(){const c=document.createElement('canvas');c.width=128*NC;c.height=128;const x=c.getContext('2d');
+ const cell=(i,f)=>{x.save();x.translate(i*128+64,64);f();x.restore();};
+ cell(0,()=>{x.fillStyle='#ff5d8f';x.beginPath();x.moveTo(0,40);x.bezierCurveTo(-70,-5,-35,-60,0,-22);x.bezierCurveTo(35,-60,70,-5,0,40);x.fill();x.fillStyle='rgba(255,255,255,.6)';x.beginPath();x.ellipse(-22,-18,10,6,-0.6,0,7);x.fill();});
+ cell(1,()=>{const g=x.createRadialGradient(-14,-16,4,0,0,52);g.addColorStop(0,'#fff8cf');g.addColorStop(0.35,'#ffd54a');g.addColorStop(1,'#d9860c');x.fillStyle=g;x.beginPath();x.moveTo(-44,-10);x.quadraticCurveTo(-44,48,0,52);x.quadraticCurveTo(44,48,44,-10);x.quadraticCurveTo(0,-56,-44,-10);x.fill();
+  x.strokeStyle='rgba(150,80,0,.5)';x.lineWidth=4;x.stroke();x.beginPath();x.moveTo(-26,4);x.quadraticCurveTo(0,30,26,4);x.stroke();x.fillStyle='rgba(255,255,255,.75)';x.beginPath();x.ellipse(-16,-18,9,5,-0.5,0,7);x.fill();});
+ cell(2,()=>{x.strokeStyle='rgba(255,255,255,.9)';x.lineWidth=7;x.beginPath();x.arc(0,0,52,0,7);x.stroke();x.lineWidth=3;x.globalAlpha=0.5;x.beginPath();x.arc(0,0,40,0,7);x.stroke();});
+ cell(3,()=>{const g=x.createRadialGradient(0,0,0,0,0,60);g.addColorStop(0,'rgba(255,255,230,1)');g.addColorStop(0.2,'rgba(255,240,170,.8)');g.addColorStop(1,'rgba(255,230,150,0)');x.fillStyle=g;x.beginPath();for(let i=0;i<8;i++){const a=i*Math.PI/4,r=i%2?18:60;x.lineTo(Math.cos(a)*r,Math.sin(a)*r);}x.fill();});
+ cell(4,()=>{const g=x.createRadialGradient(0,0,0,0,0,62);g.addColorStop(0,'rgba(0,10,25,.55)');g.addColorStop(1,'rgba(0,10,25,0)');x.fillStyle=g;x.fillRect(-64,-64,128,128);});
+ cell(5,()=>{for(let i=0;i<7;i++){x.fillStyle=i%2?'rgba(70,52,30,.85)':'rgba(96,74,40,.85)';x.beginPath();x.ellipse(Math.cos(i*2.1)*18,Math.sin(i*1.7)*14,16-i,11-i*0.8,i,0,7);x.fill();}});
+ // 6 beach ball
+ cell(6,()=>{const cols=['#ff4d4d','#fff','#ffd23f','#fff','#3a86ff','#fff'];for(let i=0;i<6;i++){x.fillStyle=cols[i];x.beginPath();x.moveTo(0,0);x.arc(0,0,58,i*Math.PI/3,(i+1)*Math.PI/3);x.fill();}
+  const g=x.createRadialGradient(-20,-22,4,0,0,60);g.addColorStop(0,'rgba(255,255,255,.55)');g.addColorStop(0.5,'rgba(255,255,255,0)');g.addColorStop(1,'rgba(0,20,50,.45)');x.fillStyle=g;x.beginPath();x.arc(0,0,58,0,7);x.fill();
+  x.fillStyle='#fff';x.beginPath();x.arc(0,0,9,0,7);x.fill();x.lineWidth=3;x.strokeStyle='rgba(30,40,70,.6)';x.beginPath();x.arc(0,0,58,0,7);x.stroke();});
+ // 7 mirror
+ cell(7,()=>{x.fillStyle='#8a5a2b';x.fillRect(-6,40,12,18);x.fillRect(-26,56,52,7);const fg=x.createLinearGradient(-44,-56,44,52);fg.addColorStop(0,'#ffe08a');fg.addColorStop(1,'#c98a1c');x.fillStyle=fg;x.beginPath();x.ellipse(0,-6,42,52,0,0,7);x.fill();
+  const gg=x.createLinearGradient(-34,-50,34,40);gg.addColorStop(0,'#e9fbff');gg.addColorStop(0.5,'#9fd7ea');gg.addColorStop(1,'#6fb3cf');x.fillStyle=gg;x.beginPath();x.ellipse(0,-6,33,43,0,0,7);x.fill();x.fillStyle='rgba(255,255,255,.55)';x.beginPath();x.ellipse(-14,-26,6,16,0.4,0,7);x.fill();});
+ // 8 streak
+ cell(8,()=>{const g=x.createLinearGradient(-60,0,60,0);g.addColorStop(0,'rgba(255,255,255,0)');g.addColorStop(0.7,'rgba(255,255,255,.9)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(-60,-5,120,10);});
+ // 9 confetti
+ cell(9,()=>{x.fillStyle='#fff';x.beginPath();x.roundRect?x.roundRect(-30,-16,60,32,6):x.rect(-30,-16,60,32);x.fill();});
+ // 10 halo
+ cell(10,()=>{const g=x.createRadialGradient(0,0,0,0,0,62);g.addColorStop(0,'rgba(255,255,255,.9)');g.addColorStop(0.35,'rgba(255,255,255,.35)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(-64,-64,128,128);});
+ // 11 hand food
+ cell(11,()=>{for(let i=0;i<9;i++){const a=i*0.7,r=i?26:0;const gx=Math.cos(a)*r,gy=Math.sin(a)*r*0.8;const g=x.createRadialGradient(gx-5,gy-5,1,gx,gy,16);g.addColorStop(0,'#ffcf8a');g.addColorStop(1,'#9a4f1a');x.fillStyle=g;x.beginPath();x.arc(gx,gy,15,0,7);x.fill();}});
+ atlasTex=texFromCanvas(c);
+ // emoji speech bubbles
+ const e=document.createElement('canvas');e.width=128*EMO.length;e.height=128;const ex=e.getContext('2d');
+ EMO.forEach((s,i)=>{ex.save();ex.translate(i*128+64,64);ex.fillStyle='rgba(255,255,255,.96)';ex.strokeStyle='rgba(29,39,66,.35)';ex.lineWidth=4;ex.beginPath();
+  if(ex.roundRect)ex.roundRect(-56,-50,112,82,26);else ex.rect(-56,-50,112,82);ex.fill();ex.stroke();ex.beginPath();ex.moveTo(-20,30);ex.lineTo(-30,56);ex.lineTo(0,31);ex.closePath();ex.fill();
+  ex.font=(s.length>2?'40px':'54px')+' "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';ex.textAlign='center';ex.textBaseline='middle';ex.fillStyle='#1d2742';ex.fillText(s,0,-8);ex.restore();});
+ emoTex=texFromCanvas(e);}
+
+/* =========================== DECOR =========================== */
+const icoC={};
+function icosphere(lv){lv=lv===undefined?2:lv;if(icoC[lv])return icoC[lv];const t=(1+Math.sqrt(5))/2;let v=[[-1,t,0],[1,t,0],[-1,-t,0],[1,-t,0],[0,-1,t],[0,1,t],[0,-1,-t],[0,1,-t],[t,0,-1],[t,0,1],[-t,0,-1],[-t,0,1]].map(a=>{const l=Math.hypot(...a);return a.map(q=>q/l)});
+ let f=[[0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],[1,5,9],[5,11,4],[11,10,2],[10,7,6],[7,1,8],[3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],[4,9,5],[2,4,11],[6,2,10],[8,6,7],[9,8,1]];
+ for(let s=0;s<lv;s++){const nf=[],cache={};const mid=(a,b)=>{const k=a<b?a+'_'+b:b+'_'+a;if(cache[k]!==undefined)return cache[k];const m=[0,1,2].map(i=>(v[a][i]+v[b][i])/2),l=Math.hypot(...m);v.push(m.map(q=>q/l));return cache[k]=v.length-1;};
+  for(const[a,b,c]of f){const ab=mid(a,b),bc=mid(b,c),ca=mid(c,a);nf.push([a,ab,ca],[b,bc,ab],[c,ca,bc],[ab,bc,ca]);}f=nf;}
+ return icoC[lv]={v,f};}
+function n3(x,y,z,s){return Math.sin(x*1.3+s)*Math.sin(y*1.7+s*2)*Math.sin(z*1.1+s*3)*0.5+Math.sin(x*3.1+y*2.3+s)*0.18+Math.sin(z*2.7-x*1.9+s*1.7)*0.14;}
+function addRock(A,cx,cy,cz,sx,sy,sz,col,s,opt){opt=opt||{};const mossOn=opt.moss!==0&&opt.moss!==false;const{v,f}=icosphere(opt.lo?1:2);const P=v.map(p=>{const k=1+0.32*n3(p[0]*1.6,p[1]*1.6,p[2]*1.6,s);return[cx+p[0]*sx*k,Math.max(T.floorY-0.4,cy+p[1]*sy*k),cz+p[2]*sz*k];});
+ const moss=hex2rgb('#5f8f4a');
+ for(const[a,b,c]of f){const A1=P[a],B1=P[b],C1=P[c];const u=[B1[0]-A1[0],B1[1]-A1[1],B1[2]-A1[2]],w=[C1[0]-A1[0],C1[1]-A1[1],C1[2]-A1[2]];let n=[u[1]*w[2]-u[2]*w[1],u[2]*w[0]-u[0]*w[2],u[0]*w[1]-u[1]*w[0]];const l=Math.hypot(...n)||1;n=n.map(q=>q/l);
+  if(n[0]*(A1[0]-cx)+n[1]*(A1[1]-cy)+n[2]*(A1[2]-cz)<0)n=n.map(q=>-q);
+  const k=0.85+rnd()*0.3;let cc=col.map(q=>q*k);if(opt.brain){const m=(A1[0]+B1[0]+C1[0])/3-cx,mz=(A1[2]+B1[2]+C1[2])/3-cz,my=(A1[1]+B1[1]+C1[1])/3-cy;const w=Math.sin((m*1.3+mz)*14/Math.max(sx,0.2)+Math.sin(my*20)*2);cc=col.map(q=>q*(w>0?1.08:0.72));}else if(mossOn&&n[1]>0.55&&rnd()<0.55)cc=cc.map((q,i)=>lerp(q,moss[i],0.6));
+  for(const p of[A1,B1,C1])A.push(p[0],p[1],p[2],n[0],n[1],n[2],cc[0],cc[1],cc[2]);}}
+function addTube(A,pts,radii,col,stripe){const segs=8;const rings=[];for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[Math.min(i+1,pts.length-1)],o=pts[Math.max(i-1,0)];let t=[q[0]-o[0],q[1]-o[1],q[2]-o[2]];let l=Math.hypot(...t)||1;t=t.map(v=>v/l);
+ let a=Math.abs(t[1])<0.9?[0,1,0]:[1,0,0];let b1=[t[1]*a[2]-t[2]*a[1],t[2]*a[0]-t[0]*a[2],t[0]*a[1]-t[1]*a[0]];l=Math.hypot(...b1);b1=b1.map(v=>v/l);const b2=[t[1]*b1[2]-t[2]*b1[1],t[2]*b1[0]-t[0]*b1[2],t[0]*b1[1]-t[1]*b1[0]];
+ const ring=[];for(let s=0;s<=segs;s++){const ang=s/segs*Math.PI*2,c=Math.cos(ang),sn=Math.sin(ang);const n=[b1[0]*c+b2[0]*sn,b1[1]*c+b2[1]*sn,b1[2]*c+b2[2]*sn];ring.push([p[0]+n[0]*radii[i],p[1]+n[1]*radii[i],p[2]+n[2]*radii[i],n]);}rings.push(ring);}
+ for(let i=0;i<rings.length-1;i++)for(let s=0;s<segs;s++){const k=stripe?(0.85+0.25*Math.sin(i*1.7+s*0.4)):1;const cc=col.map(q=>q*k);const q=[rings[i][s],rings[i][s+1],rings[i+1][s],rings[i][s+1],rings[i+1][s+1],rings[i+1][s]];for(const v of q)A.push(v[0],v[1],v[2],v[3][0],v[3][1],v[3][2],cc[0],cc[1],cc[2]);}}
+function addCoral(A,x,z,col,s){const branch=(p,dir,len,r,depth)=>{const pts=[p],rad=[r];let cur=p,d=dir;for(let i=1;i<=5;i++){d=[d[0]+sr(-0.25,0.25),d[1],d[2]+sr(-0.15,0.15)];const l=Math.hypot(...d);d=d.map(v=>v/l);cur=[cur[0]+d[0]*len/5,cur[1]+d[1]*len/5,cur[2]+d[2]*len/5];pts.push(cur);rad.push(r*(1-i/6.5));}
+ addTube(A,pts,rad,col,false);addRock(A,cur[0],cur[1],cur[2],r*0.75,r*0.75,r*0.75,col.map(q=>q*1.15),s+depth);
+ if(depth<2){const n=2;for(let k=0;k<n;k++){const nd=[d[0]+sr(-0.8,0.8),d[1]+0.2,d[2]+sr(-0.3,0.3)];const l=Math.hypot(...nd);branch(pts[3],nd.map(v=>v/l),len*0.7,r*0.6,depth+1);}}};
+ branch([x,T.floorY-0.05,z],[0,1,0],sr(0.9,1.4)*T.dec,0.11*T.dec,0);}
+const PLANT_STIFF={reed:6,fan:4};
+function addPlant(A,x,z,h,w,col,type,lean,sd){const N=type==='grass'||type==='tent'?6:type==='reed'?10:14;
+ const shape=t=>type==='kelp'?(0.35+0.65*Math.sin(Math.min(1,t*1.1)*Math.PI*0.85))*(1+0.28*Math.sin(t*26+sd*9)):type==='grass'?Math.pow(1-t,0.7):type==='tent'?Math.pow(1-t*0.9,0.35):type==='reed'?Math.pow(1-t*0.97,0.3):type==='fan'?Math.pow(Math.sin(Math.max(0.05,t)*Math.PI*0.97),0.45)*(0.55+0.55*t)*(1+0.12*Math.sin(t*30+sd*5)):Math.pow(Math.sin(Math.max(0.05,t)*Math.PI),0.55);
+ const vs=[];for(let k=0;k<=N;k++){const t=k/N,hw=w*0.5*shape(t),off=lean*t*t*h;vs.push([off-hw,t],[off+hw,t]);}
+ const cc=col.map(q=>q*(0.85+rnd()*0.3)),aS=(PLANT_STIFF[type]||0)+((sd/9)%1);
+ for(let k=0;k<N;k++){const a=vs[k*2],b=vs[k*2+1],c=vs[k*2+2],d=vs[k*2+3];for(const v of[a,b,c,b,d,c])A.push(x,T.floorY,z,v[0],v[1],h,aS,cc[0],cc[1],cc[2]);}}
+const SCENES={
+ reef:{name:'Coral reef',emoji:'🪸',top:'#a8f0f2',mid:'#2fb0cf',deep:'#0d4a78',sand:'#f4e7c6',light:'#fff6dc',li:1.05,rays:1.0,murk:0},
+ wreck:{name:'Sunken shipwreck',emoji:'🏴‍☠️',top:'#6aa6a8',mid:'#1f5866',deep:'#04161f',sand:'#9b8b6c',light:'#dfeedd',li:0.82,rays:0.85,murk:0.28},
+ pond:{name:'River pond',emoji:'🪷',top:'#cfe8a6',mid:'#5f9a5a',deep:'#1a3824',sand:'#8c7a5a',light:'#fbffe0',li:0.95,rays:0.9,murk:0.14}};
+const scene=()=>SCENES[S.scene]||SCENES.reef;
+let stones=[],rocks=[],plantSpots=[],sceneFx={};
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+function addTri(A,a,b,c,col,ctr){let n=V3.norm(cross(V3.sub(b,a),V3.sub(c,a)));if(ctr){const m=[(a[0]+b[0]+c[0])/3-ctr[0],(a[1]+b[1]+c[1])/3-ctr[1],(a[2]+b[2]+c[2])/3-ctr[2]];if(n[0]*m[0]+n[1]*m[1]+n[2]*m[2]<0)n=V3.mul(n,-1);}for(const p of[a,b,c])A.push(p[0],p[1],p[2],n[0],n[1],n[2],col[0],col[1],col[2]);}
+function addQuad(A,a,b,c,d,col,ctr){addTri(A,a,b,c,col,ctr);addTri(A,a,c,d,col,ctr);}
+function xform(o,ry,rx,rz){const cy=Math.cos(ry||0),sy=Math.sin(ry||0),cx=Math.cos(rx||0),sx=Math.sin(rx||0),cz=Math.cos(rz||0),sz=Math.sin(rz||0);
+ return p=>{let x=p[0],y=p[1],z=p[2];[x,y]=[x*cz-y*sz,x*sz+y*cz];[y,z]=[y*cx-z*sx,y*sx+z*cx];[x,z]=[x*cy+z*sy,-x*sy+z*cy];return[x+o[0],y+o[1],z+o[2]];};}
+function addBox(A,tf,c,s,col){const h=s.map(v=>v/2),P=[];for(let i=0;i<8;i++)P.push(tf([c[0]+(i&1?h[0]:-h[0]),c[1]+(i&2?h[1]:-h[1]),c[2]+(i&4?h[2]:-h[2])]));const ctr=tf(c);
+ for(const f of[[0,2,6,4],[1,5,7,3],[0,4,5,1],[2,3,7,6],[0,1,3,2],[4,6,7,5]])addQuad(A,P[f[0]],P[f[1]],P[f[2]],P[f[3]],col,ctr);}
+function addCap(A,c,axis,r,col,seg){seg=seg||12;const a=Math.abs(axis[1])<0.9?[0,1,0]:[1,0,0];const u=V3.norm(cross(axis,a)),v=cross(axis,u);for(let i=0;i<seg;i++){const t0=i/seg*Math.PI*2,t1=(i+1)/seg*Math.PI*2;const p0=V3.add(c,V3.add(V3.mul(u,Math.cos(t0)*r),V3.mul(v,Math.sin(t0)*r))),p1=V3.add(c,V3.add(V3.mul(u,Math.cos(t1)*r),V3.mul(v,Math.sin(t1)*r)));for(const p of[c,p0,p1])A.push(p[0],p[1],p[2],axis[0],axis[1],axis[2],col[0],col[1],col[2]);}}
+function addLog(A,back){const z=sr(-3.5,-2.0),x0=sr(-0.6,0.1)*back(z),len=sr(2.2,3.4)*T.dec;const pts=[],rad=[];for(let i=0;i<=10;i++){const t=i/10;pts.push([x0+t*len,T.floorY+0.08+Math.sin(t*Math.PI)*0.35*T.dec+t*t*0.8*T.dec,z+Math.sin(t*3)*0.25]);rad.push((0.17-0.1*t)*T.dec);}
+ addTube(A,pts,rad,hex2rgb('#a07a55'),true);const bp=pts[4],br=[];for(let i=0;i<=5;i++)br.push([bp[0]+i*0.12*T.dec,bp[1]+i*0.16*T.dec,bp[2]+i*0.05]);addTube(A,br,br.map((_,i)=>(0.07-i*0.01)*T.dec),hex2rgb('#a07a55'),true);}
+function addGrass(pl,back,n,cols,zr){for(let i=0;i<n;i++){const z=sr(zr[0],zr[1]),x=sr(-1,1)*back(z)*0.95;const nb=5+(rnd()*4|0),hh=sr(0.5,1.2)*T.dec,col=cols[(rnd()*cols.length)|0];for(let b=0;b<nb;b++)addPlant(pl,x+sr(-0.12,0.12),z+sr(-0.1,0.1),hh*sr(0.6,1.1),0.09*T.dec,col,'grass',(b-nb/2)*0.12,rnd()*9);if(z>-3.6)plantSpots.push({x,z});}}
+
+/* ---------- Coral reef ---------- */
+function decorReef(lit,pl,back){const d=T.dec;
+ const sandRock=['#d8cdb4','#c9bfa6','#b8b09a'].map(hex2rgb);
+ for(let i=0;i<3;i++){const z=sr(-5.5,-3.5),x=lerp(-back(z),back(z),(i+sr(0.2,0.8))/3);const s=sr(0.7,1.2)*d,sx=s*1.4,sy=s*0.7,sz=s;addRock(lit,x,T.floorY+s*0.15,z,sx,sy,sz,sandRock[i],rnd()*9,{moss:0});rocks.push({x,y:T.floorY,z,sx,sy,sz});}
+ const brainC=['#f28fb0','#ffd166','#c7a3ff','#8fe3c4'].map(hex2rgb);
+ const nb=Math.round(clamp(T.hw*0.9,2,5));for(let i=0;i<nb;i++){const z=sr(-3,0.8),x=sr(-0.9,0.9)*back(z);const s=sr(0.35,0.6)*d;addRock(lit,x,T.floorY+s*0.25,z,s*1.1,s*0.75,s,brainC[i%4],rnd()*9,{moss:0,brain:1});rocks.push({x,y:T.floorY,z,sx:s*1.1,sy:s*0.75,sz:s});}
+ const coralCols=['#ff7a8a','#ff9f43','#c77dff','#ff5d73','#ffd23f','#4cc9f0'].map(hex2rgb);
+ const nc=Math.round(clamp(T.hw*1.8,4,12));for(let i=0;i<nc;i++){const z=sr(-4.5,0.5);addCoral(lit,sr(-1,1)*back(z)*0.95,z,coralCols[i%6],rnd()*9);}
+ const spC=['#ff9f1c','#ffbf69','#e76f51'].map(hex2rgb);
+ for(let g=0;g<Math.round(clamp(T.hw*0.6,2,4));g++){const z=sr(-4,-1),x=sr(-0.9,0.9)*back(z);for(let k=0;k<3;k++){const h=sr(0.6,1.3)*d,x0=x+sr(-0.25,0.25),z0=z+sr(-0.2,0.2);const pts=[],rad=[];for(let i=0;i<=5;i++){pts.push([x0+Math.sin(i*0.6)*0.05,T.floorY+h*i/5,z0]);rad.push((0.11+0.02*Math.sin(i*1.3))*d);}addTube(lit,pts,rad,spC[k%3],true);addCap(lit,pts[5],[0,1,0],rad[5]*0.85,spC[k%3].map(v=>v*0.3));}}
+ const fanC=['#b5179e','#e63946','#ff8fab','#9d4edd'].map(hex2rgb);const nf=Math.round(clamp(T.hw*0.9,3,7));
+ for(let i=0;i<nf;i++){const z=sr(-5,-2),x=sr(-1,1)*back(z);addPlant(pl,x,z,sr(1.1,1.8)*d,sr(1.0,1.5)*d,fanC[i%4],'fan',sr(-0.1,0.1),rnd()*9);plantSpots.push({x,z:Math.max(z+0.5,-3.6)});}
+ const anC=[['#ff70a6','#ffd6e8'],['#c77dff','#f1e0ff'],['#ff9f43','#ffe0b8'],['#4cc9f0','#d8f6ff']];const na=Math.round(clamp(T.hw*1.2,3,8));
+ for(let i=0;i<na;i++){const z=sr(-2.5,1.8),x=sr(-0.9,0.9)*back(z),c=anC[i%4].map(hex2rgb);addRock(lit,x,T.floorY,z,0.16*d,0.1*d,0.16*d,c[0].map(v=>v*0.7),rnd()*9,{moss:0,lo:1});
+  const nt=16;for(let k=0;k<nt;k++){const a=k/nt*Math.PI*2;addPlant(pl,x+Math.cos(a)*0.08*d,z+Math.sin(a)*0.06,sr(0.35,0.55)*d,0.06*d,k%2?c[0]:c[1],'tent',Math.cos(a)*0.35,rnd()*9);}plantSpots.push({x,z});}
+ addGrass(pl,back,Math.round(clamp(T.hw,4,10)),[hex2rgb('#3fae5a'),hex2rgb('#2bb3a0')],[-4,1.5]);}
+
+/* ---------- Sunken shipwreck ---------- */
+function decorWreck(lit,pl,back){const d=T.dec;
+ const dark=['#5b5a55','#6b655a','#4f5a5e'].map(hex2rgb);
+ for(let i=0;i<4;i++){const z=sr(-5.5,-2.5),x=lerp(-back(z),back(z),(i+sr(0.15,0.85))/4);const s=sr(0.5,1)*d,sx=s*1.4,sy=s*0.8,sz=s;addRock(lit,x,T.floorY+s*0.2,z,sx,sy,sz,dark[i%3],rnd()*9);rocks.push({x,y:T.floorY,z,sx,sy,sz});}
+ // broken hull, half sunk and tipped towards you
+ const hz=-4.2,bk=back(hz),Lh=Math.min(bk*1.6,9),Hh=1.6*d,Wh=1.3*d,hx=-bk*0.12;
+ const tf=xform([hx,T.floorY+Hh*0.72,hz],0.22,0.42,0.08);
+ const NU=28,NA=12,G=[];for(let i=0;i<=NU;i++){const u=i/NU,prof=Math.pow(Math.sin(Math.PI*(0.05+0.9*u)),0.55);const row=[];for(let j=0;j<=NA;j++){const a=j/NA*Math.PI;row.push(tf([(u-0.5)*Lh,-Math.sin(a)*Hh*Math.pow(prof,0.8),Math.cos(a)*Wh*prof]));}G.push(row);}
+ const wood=['#6e4a2f','#5d3e27','#7a5436'].map(hex2rgb),ctr=tf([0,Hh*0.4,0]);
+ for(let i=0;i<NU;i++)for(let j=0;j<NA;j++){const u=(i+0.5)/NU,a=(j+0.5)/NA*Math.PI;if(u>0.72+0.09*Math.sin(a*6+1))continue;if(u>0.15&&u<0.65&&rnd()<0.035)continue;
+  addQuad(lit,G[i][j],G[i+1][j],G[i+1][j+1],G[i][j+1],wood[j%3].map(v=>v*(0.85+0.3*rnd())),ctr);}
+ const trim=hex2rgb('#4a3020');
+ for(const j of[0,NA]){const pts=[],rad=[];for(let i=0;i<=Math.round(NU*0.7);i++){pts.push(G[i][j]);rad.push(0.07*d);}addTube(lit,pts,rad,trim,true);}
+ for(const u of[0.74,0.8,0.87]){const i=Math.round(u*NU);const j0=1+(rnd()*3|0),j1=NA-1-(rnd()*3|0);const pts=[],rad=[];for(let j=j0;j<=j1;j++){pts.push(G[i][j]);rad.push(0.06*d);}if(pts.length>1)addTube(lit,pts,rad,trim,true);}
+ const base=tf([-0.05*Lh,-0.1,0]),mh=(T.topY-T.floorY)*0.62,md=V3.norm([0.5,0.85,0.12]),mpts=[],mr=[];for(let i=0;i<=6;i++){mpts.push(V3.add(base,V3.mul(md,mh*i/6)));mr.push((0.12-0.06*i/6)*d);}addTube(lit,mpts,mr,hex2rgb('#5a3b24'),true);
+ const yc=V3.add(base,V3.mul(md,mh*0.72)),yd=V3.norm([-md[1],md[0],0.25]);addTube(lit,[V3.add(yc,V3.mul(yd,-0.9*d)),yc,V3.add(yc,V3.mul(yd,0.7*d))],[0.05*d,0.06*d,0.04*d],hex2rgb('#5a3b24'),true);
+ rocks.push({x:hx,y:T.floorY,z:hz+Wh*0.5,sx:Lh*0.35,sy:Hh*1.2,sz:Wh*0.8});
+ // barrels
+ for(let k=0;k<2;k++){const z=sr(-3,-2),x=clamp(hx+Lh*0.35+k*0.75*d,-back(z)*0.9,back(z)*0.9),ax=V3.norm([Math.cos(k*1.2+0.4),0,Math.sin(k*1.2+0.4)]),r=0.26*d,len=0.75*d,c=[x,T.floorY+r*0.9,z];const pts=[],rad=[];
+  for(let i=0;i<=6;i++){const t=i/6-0.5;pts.push(V3.add(c,V3.mul(ax,t*len)));rad.push(r*(1+0.1*(1-4*t*t)));}addTube(lit,pts,rad,hex2rgb('#7b5534'),true);addCap(lit,pts[0],V3.mul(ax,-1),rad[0],hex2rgb('#5e3f25'));addCap(lit,pts[6],ax,rad[6],hex2rgb('#5e3f25'));}
+ // treasure chest, lid open, coins spilling
+ const cz=-0.9,cx=back(cz)*0.5,ctf=xform([cx,T.floorY,cz],-0.35,0,0);
+ addBox(lit,ctf,[0,0.25*d,0],[0.95*d,0.5*d,0.6*d],hex2rgb('#7a4f2a'));
+ for(const bx of[-0.3,0.3])addBox(lit,ctf,[bx*d,0.25*d,0],[0.08*d,0.52*d,0.62*d],hex2rgb('#c9a227'));
+ const coin=hex2rgb('#ffcf3f');for(let i=0;i<18;i++){const p=ctf([sr(-0.38,0.38)*d,0.5*d+sr(0,0.08)*d,sr(-0.22,0.22)*d]);addRock(lit,p[0],p[1],p[2],0.07*d,0.025*d,0.07*d,coin,rnd()*9,{moss:0,lo:1});}
+ for(let i=0;i<9;i++){const p=ctf([sr(-0.6,0.7)*d,0,sr(0.35,0.9)*d]);addRock(lit,p[0],T.floorY+0.02,p[2],0.07*d,0.02*d,0.07*d,coin,rnd()*9,{moss:0,lo:1});}
+ const lidTf=p=>{const th=-1.15,y=p[1]*Math.cos(th)-p[2]*Math.sin(th),z=p[1]*Math.sin(th)+p[2]*Math.cos(th);return ctf([p[0],y+0.5*d,z-0.3*d]);};
+ addBox(lit,lidTf,[0,0.07*d,0.3*d],[0.97*d,0.14*d,0.62*d],hex2rgb('#6b4423'));
+ sceneFx.chest=ctf([0,0.6*d,0]);rocks.push({x:cx,y:T.floorY,z:cz,sx:0.6*d,sy:0.4*d,sz:0.4*d});
+ // anchor
+ const az=0.6,axp=-back(az)*0.6,iron=hex2rgb('#4d5257'),atf=xform([axp,T.floorY,az],0.3,0,-0.35);
+ const sh=[];for(let i=0;i<=5;i++)sh.push(atf([0,0.08*d+i*0.3*d,0]));addTube(lit,sh,sh.map(()=>0.06*d),iron,true);
+ const arm=[];for(let i=0;i<=8;i++){const a=Math.PI*(1.15+0.7*i/8);arm.push(atf([Math.cos(a)*0.5*d,0.5*d+Math.sin(a)*0.45*d,0]));}addTube(lit,arm,arm.map(()=>0.055*d),iron,true);
+ for(const e of[arm[0],arm[8]])addRock(lit,e[0],e[1]+0.04,e[2],0.11*d,0.08*d,0.05*d,iron,rnd()*9,{moss:0,lo:1});
+ addTube(lit,[atf([-0.4*d,1.35*d,0]),atf([0.4*d,1.35*d,0])],[0.05*d,0.05*d],iron,true);
+ const ring=[];for(let i=0;i<=12;i++){const a=i/12*Math.PI*2;ring.push(atf([Math.cos(a)*0.14*d,1.65*d+Math.sin(a)*0.14*d,0]));}addTube(lit,ring,ring.map(()=>0.035*d),iron,true);
+ const kelpC=hex2rgb('#5d7f34');const nk=Math.round(clamp(T.hw*0.8,3,7));for(let i=0;i<nk;i++){const z=sr(-6,-2.8),x=lerp(-back(z),back(z),(i+sr(0.1,0.9))/nk);addPlant(pl,x,z,sr(0.5,0.8)*(T.topY-T.floorY),0.38*d,kelpC,'kelp',sr(-0.08,0.08),rnd()*9);plantSpots.push({x,z:Math.max(z+0.6,-3.6)});}
+ addGrass(pl,back,Math.round(clamp(T.hw*1.2,4,12)),[hex2rgb('#4b7a3a'),hex2rgb('#6a7d3a')],[-4,1.5]);}
+
+/* ---------- River pond ---------- */
+function decorPond(lit,pl,back){const d=T.dec;
+ const st=['#8d8a80','#6f6a62','#a39a88','#7d6a55','#9b7b5e','#5f6b70'].map(hex2rgb);
+ for(let i=0;i<3;i++){const z=sr(-5.5,-3),x=lerp(-back(z),back(z),(i+sr(0.2,0.8))/3);const s=sr(0.6,1.1)*d,sx=s*1.5,sy=s*0.7,sz=s;addRock(lit,x,T.floorY+s*0.15,z,sx,sy,sz,st[i],rnd()*9);rocks.push({x,y:T.floorY,z,sx,sy,sz});}
+ const np=Math.round(clamp(T.hw*28,50,140));for(let i=0;i<np;i++){const z=sr(-4.5,2.2),x=sr(-1.05,1.05)*back(z),s=sr(0.06,0.17)*d;addRock(lit,x,T.floorY+s*0.15,z,s*sr(1,1.5),s*0.55,s,st[(rnd()*6)|0].map(v=>v*sr(0.85,1.15)),rnd()*9,{moss:rnd()<0.2?1:0,lo:1});}
+ addLog(lit,back);
+ const rootC=hex2rgb('#4b3527');
+ for(const sgn of[-1,1]){const z0=sr(-3.6,-2.6),x0=sgn*back(z0)*0.98;for(let k=0;k<4;k++){const pts=[],rad=[];const p=[x0+sgn*sr(0.1,0.6),T.topY+1.6,z0+sr(-0.4,0.4)],end=[x0-sgn*sr(0.3,1.1)*d,T.floorY-0.05,z0+sr(-0.6,0.8)];
+  for(let i=0;i<=10;i++){const t=i/10;pts.push([lerp(p[0],end[0],Math.pow(t,1.6))+Math.sin(t*5+k)*0.12,lerp(p[1],end[1],t),lerp(p[2],end[2],t)]);rad.push((0.14-0.1*t)*d*sr(0.8,1.1));}addTube(lit,pts,rad,rootC,true);}
+  rocks.push({x:x0-sgn*0.8,y:T.floorY,z:z0,sx:1.2,sy:1.6,sz:0.6});}
+ const reedC=['#7d8f3a','#97a24c','#6a7f35'].map(hex2rgb);const nr=Math.round(clamp(T.hw*1.3,4,10));
+ for(let i=0;i<nr;i++){const side=i%3===0,z=side?sr(-1,1.5):sr(-5.5,-2.5),x=side?(rnd()<0.5?-1:1)*back(z)*sr(0.85,1):sr(-1,1)*back(z);const nb=8+(rnd()*6|0);
+  for(let b=0;b<nb;b++)addPlant(pl,x+sr(-0.25,0.25),z+sr(-0.15,0.15),(T.topY-T.floorY)*sr(0.75,1.12),0.07*d,reedC[b%3],'reed',sr(-0.05,0.05),rnd()*9);plantSpots.push({x,z:Math.max(z,-3.6)});}
+ const padC=hex2rgb('#4f8f3a'),padU=hex2rgb('#2f5a26'),flw=hex2rgb('#ff9ec4');const nl=Math.round(clamp(T.hw*1.6,4,11));
+ for(let i=0;i<nl;i++){const z=sr(-4,1.2),x=sr(-1,1)*xLim(z,0),r=sr(0.45,0.85)*d,y=T.topY+0.12+rnd()*0.05,notch=rnd()*6.28,seg=20;
+  for(let k=0;k<seg;k++){const a0=notch+0.35+k/seg*(Math.PI*2-0.7),a1=notch+0.35+(k+1)/seg*(Math.PI*2-0.7);const c=[x,y,z],p0=[x+Math.cos(a0)*r,y,z+Math.sin(a0)*r*0.9],p1=[x+Math.cos(a1)*r,y,z+Math.sin(a1)*r*0.9];
+   for(const p of[c,p0,p1])lit.push(p[0],p[1],p[2],0,1,0,padC[0],padC[1],padC[2]);for(const p of[c,p1,p0])lit.push(p[0],p[1]-0.02,p[2],0,-1,0,padU[0],padU[1],padU[2]);}
+  if(rnd()<0.4)addRock(lit,x+r*0.2,y+0.08,z,0.15*d,0.12*d,0.15*d,flw,rnd()*9,{moss:0,lo:1});}
+ addGrass(pl,back,Math.round(clamp(T.hw*1.6,6,16)),[hex2rgb('#3fae5a'),hex2rgb('#5c9e3c')],[-4.5,1.8]);}
+
+function buildDecor(){srand(S.decorSeed*7919+13);const lit=[],pl=[];const back=z=>xLim(z,0)*1.08;rocks=[];plantSpots=[];sceneFx={};
+ if(S.scene==='wreck')decorWreck(lit,pl,back);else if(S.scene==='pond')decorPond(lit,pl,back);else decorReef(lit,pl,back);
+ stones=[];const ns=T.hw>5?3:2;for(let i=0;i<ns;i++){const z=sr(-2.6,-0.8),x=lerp(-back(z)*0.75,back(z)*0.75,(i+0.5)/ns)+sr(-0.4,0.4);addRock(lit,x,T.floorY+0.05,z,0.22*T.dec,0.14*T.dec,0.2*T.dec,hex2rgb('#5a6470'),rnd()*9,{moss:0});stones.push([x,T.floorY+0.18*T.dec,z]);}
+ if(litBuf)gl.deleteBuffer(litBuf);if(plantBuf)gl.deleteBuffer(plantBuf);
+ litBuf=mkBuf(new Float32Array(lit));litCount=lit.length/9;plantBuf=mkBuf(new Float32Array(pl));plantCount=pl.length/10;
+ if(floorBuf)gl.deleteBuffer(floorBuf);const y=T.floorY;floorBuf=mkBuf(new Float32Array([-80,y,-70,80,y,-70,-80,y,12,80,y,-70,80,y,12,-80,y,12]));
+ for(const f of fishes)f.home=null;}
+
+
+/* =========================== FISH VISUAL =========================== */
+function bleed(px,m,w,h,iters){let known=new Uint8Array(m);for(let it=0;it<iters;it++){const nk=new Uint8Array(known);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;if(known[i])continue;let r=0,g=0,b=0,n=0;for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=w||yy>=h)continue;const j=yy*w+xx;if(known[j]){r+=px[j*4];g+=px[j*4+1];b+=px[j*4+2];n++;}}if(n){px[i*4]=r/n;px[i*4+1]=g/n;px[i*4+2]=b/n;nk[i]=1;}}known=nk;}}
+function makeFishVisual(srcCanvas){const w=srcCanvas.width,h=srcCanvas.height,d=srcCanvas.getContext('2d').getImageData(0,0,w,h).data;
+ const px=new Uint8ClampedArray(d);const m=new Uint8Array(w*h);let ar=0,ag=0,ab=0,an=0;for(let i=0;i<w*h;i++){m[i]=px[i*4+3]>127?1:0;if(m[i]){ar+=px[i*4];ag+=px[i*4+1];ab+=px[i*4+2];an++;}}
+ const avg=an?[ar/an/255,ag/an/255,ab/an/255]:[1,1,1];
+ // top of the head (for hats)
+ let top=h;for(let x=Math.floor(w*0.2);x<=Math.floor(w*0.34);x++)for(let y=0;y<h;y++)if(m[y*w+x]){if(y<top)top=y;break;}
+ const headUV=[0.27,(top<h?top:h*0.3)/h];
+ bleed(px,m,w,h,6);
+ for(let i=0;i<w*h;i++)px[i*4+3]=m[i]?255:0;
+ const S2=256,tex=new Uint8Array(S2*S2*4);for(let y=0;y<S2;y++){const fy=clamp((y+0.5)/S2*h-0.5,0,h-1),y0=fy|0,y1=Math.min(h-1,y0+1),ty=fy-y0;for(let x=0;x<S2;x++){const fx=clamp((x+0.5)/S2*w-0.5,0,w-1),x0=fx|0,x1=Math.min(w-1,x0+1),tx=fx-x0;
+  for(let c=0;c<4;c++){const a=px[(y0*w+x0)*4+c],b=px[(y0*w+x1)*4+c],cc=px[(y1*w+x0)*4+c],dd=px[(y1*w+x1)*4+c];tex[(y*S2+x)*4+c]=lerp(lerp(a,b,tx),lerp(cc,dd,tx),ty);}}}
+ const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,S2,S2,0,gl.RGBA,gl.UNSIGNED_BYTE,tex);gl.generateMipmap(gl.TEXTURE_2D);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+ // signed distance to the outline: the front and back halves meet exactly on the outline, so there is no gap between them
+ const din=chamfer(m,w,h,false),inv=new Uint8Array(w*h);for(let i=0;i<w*h;i++)inv[i]=m[i]?0:1;const dout=chamfer(inv,w,h,true);
+ const sdf=new Float32Array(w*h);let dmax=1;for(let i=0;i<w*h;i++){sdf[i]=m[i]?din[i]-0.5:-(Math.min(dout[i],50)-0.5);if(sdf[i]>dmax)dmax=sdf[i];}
+ const asp=h/w,NX=64,NY=clamp(Math.round(NX*asp),8,80),half=clamp(0.95*dmax/w,0.035,0.17),R0=dmax*0.8;
+ const samp=(x,y)=>{x=clamp(x,0,w-1);y=clamp(y,0,h-1);const x0=x|0,y0=y|0,x1=Math.min(w-1,x0+1),y1=Math.min(h-1,y0+1),tx=x-x0,ty=y-y0;return lerp(lerp(sdf[y0*w+x0],sdf[y0*w+x1],tx),lerp(sdf[y1*w+x0],sdf[y1*w+x1],tx),ty);};
+ const C=NX+1,R=NY+1,Z=new Float32Array(C*R);for(let j=0;j<R;j++)for(let i=0;i<C;i++){const n=samp(i/NX*(w-1),j/NY*(h-1))/R0;Z[j*C+i]=n>=0?half*(1-Math.pow(1-Math.min(1,n),3)):Math.max(-half,half*3*n);}
+ const Zb=new Float32Array(Z);for(let j=1;j<R-1;j++)for(let i=1;i<C-1;i++){const k=j*C+i;if(Z[k]>half*0.5)Zb[k]=(Z[k]*4+Z[k-1]+Z[k+1]+Z[k-C]+Z[k+C])/8;}
+ const dx=1/NX,dy=asp/NY,V=new Float32Array(C*R*2*8);
+ for(let j=0;j<R;j++)for(let i=0;i<C;i++){const k=j*C+i,zl=Zb[j*C+Math.max(0,i-1)],zr=Zb[j*C+Math.min(C-1,i+1)],zu=Zb[Math.max(0,j-1)*C+i],zd=Zb[Math.min(R-1,j+1)*C+i];
+  const gx=(zr-zl)/(2*dx),gy=(zu-zd)/(2*dy);let n=[-gx,-gy,1];const l=Math.hypot(...n);n=n.map(v=>v/l);const x=i/NX-0.5,y=(0.5-j/NY)*asp;
+  V.set([x,y,Zb[k],n[0],n[1],n[2],i/NX,j/NY],k*8);V.set([x,y,-Zb[k],n[0],n[1],-n[2],i/NX,j/NY],(C*R+k)*8);}
+ const sat=new Uint32Array((w+1)*(h+1));for(let y=0;y<h;y++){let row=0;for(let x=0;x<w;x++){row+=m[y*w+x];sat[(y+1)*(w+1)+x+1]=sat[y*(w+1)+x+1]+row;}}
+ const box=(x0,y0,x1,y1)=>{x0=clamp(x0|0,0,w);y0=clamp(y0|0,0,h);x1=clamp(Math.ceil(x1),0,w);y1=clamp(Math.ceil(y1),0,h);return sat[y1*(w+1)+x1]-sat[y0*(w+1)+x1]-sat[y1*(w+1)+x0]+sat[y0*(w+1)+x0];};
+ const I=[];for(let j=0;j<NY;j++)for(let i=0;i<NX;i++){const cx0=i/NX*w-2,cx1=(i+1)/NX*w+2,cy0=j/NY*h-2,cy1=(j+1)/NY*h+2;if(!box(cx0,cy0,cx1,cy1))continue;const a=j*C+i,b=a+1,c=a+C,d=c+1;I.push(a,b,c,b,d,c);const o=C*R;I.push(a+o,c+o,b+o,b+o,c+o,d+o);}
+ const vbo=mkBuf(V),ibo=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ibo);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(I),gl.STATIC_DRAW);
+ return{vbo,ibo,count:I.length,tex:t,asp,avg,headUV};}
+function freeVisual(v){if(!v)return;gl.deleteBuffer(v.vbo);gl.deleteBuffer(v.ibo);gl.deleteTexture(v.tex);}
+
+/* =========================== ITEMS (drawn food / hats / castles) =========================== */
+const itemById=id=>S.items.find(i=>i.id===id);
+function loadItemTex(it){const img=new Image();img.onload=()=>{const c=document.createElement('canvas');c.width=img.naturalWidth;c.height=img.naturalHeight;const x=c.getContext('2d');x.drawImage(img,0,0);
+ const id=x.getImageData(0,0,c.width,c.height),m=new Uint8Array(c.width*c.height);for(let i=0;i<m.length;i++)m[i]=id.data[i*4+3]>60?1:0;bleed(id.data,m,c.width,c.height,4);x.putImageData(id,0,0);
+ it._tex=texFromCanvas(c);it._ar=c.width/c.height;};img.src=it.tex;}
+function castleDims(it){let h=2.1*T.dec,w=h*(it._ar||1);if(w>3.4*T.dec){w=3.4*T.dec;h=w/(it._ar||1);}return{w,h};}
+const castles=()=>S.items.filter(i=>i.type==='castle'&&i._tex).map(i=>{const d=castleDims(i);return{x:i.x,z:i.z,w:d.w,h:d.h,d:0.12,it:i};});
+
+/* =========================== SIM =========================== */
+const fishes=[],foods=[],bubbles=[],sprites=[],scalesW=[],dirts=[],dust=[],chats=[];
+const QUOTES=["Just keep doodling.","I was drawn this way.","Is it snack o'clock?","Bubbles are my love language.","I'm not lost, I'm exploring.","Every day is a fin day.","I can see my artist from here!","Swimming is basically flying, but wetter.","Pebbles are the best floor.","Have you tried the flakes? Life-changing.","I'm one of a kind. Literally.","Ask me about my tail.","Lights, caustics, action!","I nap with my eyes open.","The plants and I go way back.","Gold is just my colour."];
+const PERS={bold:{n:'💪 Bold',trust:0.6},shy:{n:'🙈 Shy',trust:0.05},playful:{n:'🎈 Playful',trust:0.45},normal:{n:'🙂 Easy-going',trust:0.35}};
+const TRUST=0.3,DAY=86400000;
+let fid=Date.now();
+function newFishData(o){return Object.assign({id:'f'+(fid++),name:'Fishy',kind:'swim',wiggle:1,size:1,born:Date.now(),xp:0,level:1,hunger:0.5,friend:{},pers:'normal',glow:false,hat:null,partyYear:0},o);}
+function spawnFish(data,tex,dropIn){let img=new Image();img.src=tex;if(!data.pers||!PERS[data.pers])data.pers=['bold','shy','playful','normal'][(Math.random()*4)|0];if(data.trust===undefined)data.trust=PERS[data.pers].trust;
+ const f=Object.assign({},data,{tex,vis:null,img,pos:[0,0,0],vel:[0,0,0],tgt:[0,0,0],tT:0,yaw:Math.random()<0.5?0:Math.PI,side:0,roll:0,phase:rand(0,6),flash:0,scared:0,eatCD:0,bubT:rand(2,8),poopT:-1,spawn:dropIn?1:0,speed:rand(0.85,1.15),hop:rand(0,6),wave:0,
+  chatCD:rand(2,6),hide:0,peerT:0,callT:0,sulkT:0,pet:0,guardCD:rand(3,8),kissCD:rand(30,70),playCD:rand(5,20),trickCD:rand(20,60),wakeT:0,puffT:0,puffK:1,blush:0,ballCD:0,trick:null,trickQ:null,toy:null,kiss:null,guard:null,leader:null,mama:null,duckT:0,duckCD:rand(5,15),home:null,sleepPt:null,rYaw:0,rRoll:0,rOffY:0,fast:0,foodTarget:null});
+ f.side=f.yaw;const z=rand(T.zMin,T.zMax);f.pos=[rand(-1,1)*xLim(z,1),dropIn?T.topY+1.4:rand(T.floorY+1,T.topY-0.5),z];if(f.kind==='ground')f.pos[1]=dropIn?T.topY+1.4:T.floorY+0.4;
+ if(dropIn){f.pos[0]=rand(-0.6,0.6)*xLim(z,1);f.vel=[0,-2.2,0];}
+ const build=()=>{const c=document.createElement('canvas');c.width=img.naturalWidth;c.height=img.naturalHeight;c.getContext('2d').drawImage(img,0,0);f.vis=makeFishVisual(c);pickTarget(f);if(nightK>0.5)f.sleepPt=sleepPoint(f);};
+ if(img.complete&&img.naturalWidth)build();else img.onload=build;fishes.push(f);updateEmpty();return f;}
+const fishScale=f=>T.baseLen*f.size*(0.55+0.45*Math.min(1,(f.level-1)/9));
+const fishGold=f=>clamp((f.level-7)/12,0,1);
+const fishHead=f=>{const half=fishScale(f)*0.5;return[f.pos[0]-Math.cos(f.yaw)*half,f.pos[1],f.pos[2]+Math.sin(f.yaw)*half];};
+const awake=f=>!(nightK>0.5&&!f.glow&&f.wakeT<=0);
+const inTag=f=>tagG&&tagG.players.includes(f);
+const busy=f=>f.spawn>0||f.pet>0||f.scared>0||f.hide>0||f.callT>0||f.kiss||inTag(f)||(partyG&&partyG.f===f)||f.toy||f.guard||f.peerT>0;
+function chat(f,key,force){if(!force&&f.chatCD>0)return;f.chatCD=rand(4,8);for(let i=chats.length-1;i>=0;i--)if(chats[i].f===f)chats.splice(i,1);chats.push({f,cell:EI[key],t:0,life:2.2});}
+
+function pickTarget(f){const sc=fishScale(f),half=sc*0.5;let z=f.kind==='drift'?rand(-2.5,1):rand(T.zMin,T.zMax);
+ if(f.pers==='bold'&&Math.random()<0.6)z=rand(0,T.zMax);
+ const xl=Math.max(0.2,xLim(z,half));let y=rand(T.floorY+0.6+half*0.5,T.topY-0.4),x=rand(-xl,xl);
+ if(f.pers==='shy'&&Math.random()<0.65&&plantSpots.length){const s=plantSpots[(Math.random()*plantSpots.length)|0];x=clamp(s.x+rand(-0.5,0.5),-xLim(s.z,half),xLim(s.z,half));z=clamp(s.z+rand(-0.2,0.5),T.zMin-0.6,T.zMax);y=rand(T.floorY+0.4+half*0.4,lerp(T.floorY,T.topY,0.55));}
+ if(f.kind==='ground'){const h=homeRock(f);if(h){x=h.x+rand(-1,1)*(h.sx+half);z=clamp(h.z+h.sz*0.9+0.25,T.zMin,T.zMax);x=clamp(x,-xLim(z,half),xLim(z,half));}y=T.floorY+0.15+half*(f.vis?f.vis.asp:0.5)*0.6;}
+ if(f.kind==='drift')y=rand(T.floorY+1.5,T.topY-0.6);
+ const bf=f.best&&fishes.find(o=>o.id===f.best);if(bf&&Math.random()<0.35&&f.kind==='swim'){x=clamp(bf.pos[0]+rand(-1,1)*half*2,-xl,xl);y=clamp(bf.pos[1]+rand(-0.5,0.5),T.floorY+0.6,T.topY-0.4);}
+ f.tgt=[x,y,z];f.tT=rand(3,8);}
+function homeRock(f){if(f.home&&rocks.includes(f.home))return f.home;let best=null,bd=1e9;for(const r of rocks){if(r.z<-3.6)continue;const d=Math.abs(r.x-f.pos[0])+Math.abs(r.z-f.pos[2])*0.5;if(d<bd&&!fishes.some(o=>o!==f&&o.home===r)){bd=d;best=r;}}if(!best)best=rocks[0];f.home=best;return best;}
+function hidePoint(f){const cands=[...castles(),...rocks.filter(r=>r.z<0.5).map(r=>({x:r.x,z:r.z,w:r.sx,h:r.sy*1.7,d:r.sz}))];
+ const half=fishScale(f)*0.5,asp=f.vis?f.vis.asp:0.5;let best=null,bd=1e9;for(const c of cands){const d=Math.abs(c.x-f.pos[0])+Math.random()*2.5;if(d<bd){bd=d;best=c;}}
+ if(!best)return[f.pos[0],T.floorY+0.6,T.zMin-1.2];
+ return[best.x+rand(-0.25,0.25)*best.w,T.floorY+clamp(best.h*0.35,half*asp*0.55+0.08,Math.max(0.35,best.h*0.7)),best.z-best.d-half*0.35-0.25];}
+function sleepPoint(f){const half=fishScale(f)*0.5,asp=f.vis?f.vis.asp:0.5;const cs=castles();
+ if(cs.length&&(f.pers==='shy'||Math.random()<0.3))return hidePoint(f);
+ if(f.kind==='ground'){const h=homeRock(f);return[h.x+rand(-0.5,0.5)*h.sx,T.floorY+half*asp*0.5+0.06,clamp(h.z+h.sz*0.9+0.2,T.zMin,T.zMax)];}
+ const z=rand(T.zMin,T.zMax*0.6);return[rand(-0.85,0.85)*xLim(z,half),T.floorY+half*asp*0.55+rand(0.15,0.7),z];}
+
+function addBubble(x,y,z,s,vy){if(bubbles.length>420)bubbles.shift();bubbles.push({p:[x,y,z],s,vy:vy||(0.7+s*4),ph:Math.random()*6,a:1});}
+function addSprite(o){sprites.push(Object.assign({t:0,life:1,rot:0,flat:0,a:1,vel:[0,0,0]},o));}
+function burst(p,n,spread){for(let i=0;i<n;i++)addBubble(p[0]+rand(-spread,spread),p[1]+rand(-spread,spread)*0.5,p[2]+rand(-spread,spread)*0.5,rand(0.04,0.13),rand(1,2.6));}
+function confetti(p,n){const cols=[[1,0.4,0.4],[1,0.85,0.25],[0.4,0.8,1],[0.6,1,0.5],[1,0.55,0.9],[0.75,0.6,1]];for(let i=0;i<n;i++)addSprite({kind:'conf',p:[p[0]+rand(-0.6,0.6),p[1]+rand(-0.1,0.4),p[2]+rand(-0.3,0.3)],vel:[rand(-1.2,1.2),rand(0.6,2),rand(-0.3,0.3)],g:1.4,life:rand(1.6,2.6),sz:0.07*T.dec,tint:cols[(Math.random()*cols.length)|0],spin:rand(-8,8)});}
+function sparkleAt(p,n,s){for(let i=0;i<n;i++)addSprite({kind:'spark',p:[p[0]+rand(-0.3,0.3)*s,p[1]+rand(-0.2,0.3)*s,p[2]+0.2],life:rand(0.5,0.9),sz:rand(0.1,0.2)*T.dec,vel:[rand(-0.4,0.4),rand(0.1,0.7),0]});}
+function dropFood(x,z){const n=7;const tex=S.food!=='pellet'&&itemById(S.food)?S.food:null;for(let i=0;i<n;i++)foods.push({p:[x+rand(-0.35,0.35),T.topY+0.3+rand(0,0.4),z+rand(-0.4,0.4)],vy:-rand(0.25,0.45),t:0,rest:0,ph:rand(0,6),tex});
+ addSprite({kind:'ring',p:[x,T.topY+0.25,z],life:0.8,sz:0.3});sBlip(0.06,700);
+ for(const f of fishes)if(!awake(f)&&Math.abs(f.pos[0]-x)<T.baseLen*2.5){f.wakeT=15;}}
+function levelUp(f){f.level++;sLevel();f.flash=1;sparkleAt(f.pos,10,fishScale(f));
+ scalesW.push({p:[f.pos[0],f.pos[1],f.pos[2]+0.1],vy:0.4,vx:rand(-0.3,0.3),rest:false,rot:0,t:0});
+ toast(`${f.name} reached level ${f.level}! ${f.level===8?'Look, a golden shimmer is starting ✨':'They dropped a golden scale ✨'}`);}
+function eat(f,amt){f.eatCD=0.35;f.hunger=Math.max(0,f.hunger-amt);f.xp++;sNom();f.flash=0.4;if(f.poopT<0&&Math.random()<0.3)f.poopT=rand(6,14);const need=f.level*4+2;if(f.xp>=need){f.xp-=need;levelUp(f);}}
+function startTrick(f,type){f.trick={type,t:0,dur:type==='loop'?1.1:type==='spin'?0.9:0.85};sBoing();burst(f.pos,4,0.2);}
+function doTrick(f,type,copy=true){if(!f.vis||f.spawn>0)return;type=type||['loop','spin','hop'][(Math.random()*3)|0];startTrick(f,type);f.trickCD=rand(50,110);chat(f,'sparkle',true);
+ if(!copy)return;const L=T.baseLen;let cands=fishes.filter(o=>o!==f&&o.vis&&awake(o)&&!o.trick&&!o.trickQ&&o.pet<=0&&o.scared<=0&&V3.dist(o.pos,f.pos)<L*5);
+ const close=cands.filter(o=>(o.friend[f.id]||0)>12||o.leader===f||f.leader===o||(o.leader&&o.leader===f.leader)||o.mama===f);
+ let copiers=close.length?close:(cands.length&&Math.random()<0.6?[cands[(Math.random()*cands.length)|0]]:[]);copiers=copiers.slice(0,3);
+ copiers.forEach((o,k)=>o.trickQ={type,delay:0.65*(k+1)});}
+function petStart(f){if(f.pers==='shy'&&f.trust<0.15){f.scared=0.6;f.fleeDir=V3.norm([f.pos[0]-(PT?PT.wx:0),rand(-0.2,0.4),-0.5]);f.hide=6;f.hidePt=hidePoint(f);chat(f,'scared',true);
+  if(!S.seen.shyPet){S.seen.shyPet=1;toast(`${f.name} is shy! Try hand-feeding them (hold 🍤 Feed in the water) to build trust`,4200);}return false;}
+ if(f.pet<=0){f.trust=Math.min(1,f.trust+0.06);chat(f,'happy',true);sPurr();}f.pet=0.9;return true;}
+
+/* ---- per-fish behaviour ---- */
+function updateFish(f,dt,time,idx){if(!f.vis)return;const sc=fishScale(f),half=sc*0.5,asp=f.vis.asp,L=T.baseLen;
+ f.hunger=clamp(f.hunger+dt/(3*3600),0,1);f.flash=Math.max(0,f.flash-dt*2);
+ f.eatCD-=dt;f.scared-=dt;f.tT-=dt;f.chatCD-=dt;f.hide-=dt;f.peerT-=dt;f.callT-=dt;f.sulkT-=dt;f.pet-=dt;f.guardCD-=dt;f.kissCD-=dt;f.playCD-=dt;f.trickCD-=dt;f.wakeT-=dt;f.puffT-=dt;f.ballCD-=dt;f.duckCD-=dt;
+ const atMirror=f.toy&&f.toy.type==='mirror'&&f.toy.at;
+ f.puffK=lerp(f.puffK,f.puffT>0?1.3:atMirror?1.12:f.sulkT>0?0.94:1,1-Math.exp(-6*dt));f.blush=lerp(f.blush,f.pet>0?1:0,1-Math.exp(-4*dt));
+ if(f.trick){f.trick.t+=dt;if(f.trick.t>=f.trick.dur)f.trick=null;}
+ if(f.trickQ){f.trickQ.delay-=dt;if(f.trickQ.delay<=0){startTrick(f,f.trickQ.type);if(Math.random()<0.7)chat(f,'fun',true);f.trickQ=null;}}
+ const head=fishHead(f);
+ if(f.spawn>0){f.vel[1]+=dt*3.5;f.vel[1]=Math.min(f.vel[1],0);f.pos[1]+=f.vel[1]*dt;f.spawn-=dt*0.7;if(f.pos[1]<T.topY&&f.pos[1]+(-f.vel[1]*dt)>=T.topY){burst([f.pos[0],T.topY,f.pos[2]],14,0.5);addSprite({kind:'ring',p:[f.pos[0],T.topY+0.2,f.pos[2]],life:1,sz:0.6});}
+  if(f.spawn<=0){f.spawn=0;pickTarget(f);}f.phase+=dt*8;f.wave=lerp(f.wave,0.12,dt*3);setRender(f);return;}
+ const asleep=!awake(f);
+ let speed=(f.kind==='ground'?0.38:f.kind==='drift'?0.24:0.62)*f.speed*L/1.3,steer=1.4,goal=null,flee=null,stop=false,force=null,arrive=true,act='wander';
+ f.foodTarget=null;
+ const hungry=f.hunger>0.06&&!asleep;
+ if(f.pet>0){act='pet';stop=true;if(Math.random()<dt*5)sparkleAt([f.pos[0],f.pos[1]+half*asp*0.3,f.pos[2]],1,sc);if(Math.random()<dt*1.3)addSprite({kind:'heart',p:[f.pos[0]+rand(-0.2,0.2),f.pos[1]+half*asp*0.6,f.pos[2]+0.2],life:1.4,sz:0.18*T.dec,vel:[0,0.5,0]});}
+ else if(f.scared>0&&f.fleeDir){act='flee';flee=f.fleeDir;speed*=2.6;steer=4;}
+ else if(f.hide>0&&f.hidePt){act='hide';goal=f.hidePt;speed*=1.7;steer=3;if(V3.dist(f.pos,goal)<0.4){stop=true;}}
+ else if(f.callT>0){act='call';goal=f.callPt;speed*=1.7;steer=3;if(V3.dist(f.pos,goal)<0.45){stop=true;force=f.callPt[0]>f.pos[0]?Math.PI:0;if(!f.waved){f.waved=1;chat(f,'wave',true);f.flash=0.8;startTrick(f,'hop');f.trust=Math.min(1,f.trust+0.02);}}}
+ else if(partyG&&partyG.f===f){act='party';goal=partyG.c;speed*=1.3;steer=2.5;}
+ else if(partyG&&awake(f)&&f.kind!=='ground'&&partyG.guests.includes(f)){act='guest';const gi=partyG.guests.indexOf(f),n=partyG.guests.length,a=gi/n*Math.PI*2+partyG.t*0.6,R=fishScale(partyG.f)*0.5+half+0.6;
+  goal=[partyG.c[0]+Math.cos(a)*R,partyG.c[1]+Math.sin(a)*R*0.55,partyG.c[2]+Math.sin(a)*R*0.5];speed*=1.6;steer=3;arrive=false;}
+ else if(lure.on&&(awake(f)||V3.dist(f.pos,lure.p)<L*2.5)){if(!awake(f))f.wakeT=8;
+  if(f.pers==='shy'&&f.trust<TRUST){act='shylure';goal=V3.add(lure.p,V3.mul(V3.norm(V3.sub(f.pos,lure.p)),L*2.4));f.trust+=dt*0.004;if(Math.random()<dt*0.15)chat(f,'look');}
+  else{act='lure';const a=idx*2.4+time*1.2;goal=[lure.p[0]+Math.cos(a)*0.3*L,lure.p[1]+Math.sin(a)*0.22*L,lure.p[2]+Math.sin(a)*0.25];speed*=f.kind==='swim'?1.9:1.5;steer=3.2;arrive=false;}}
+ else if(hand.on&&hungry){const d=V3.dist(head,hand.p);
+  if(f.trust>=TRUST){act='hand';goal=hand.p;speed*=1.9;steer=3;arrive=false;if(d<0.24+sc*0.15&&f.eatCD<=0){eat(f,0.08);f.eatCD=0.6;f.trust=Math.min(1,f.trust+0.04);if(Math.random()<0.35)chat(f,'happy');}}
+  else{act='shyhand';goal=V3.add(hand.p,V3.mul(V3.norm(V3.sub(f.pos,hand.p)),L*2.2));const before=f.trust;f.trust+=dt*0.012;if(Math.random()<dt*0.2)chat(f,'look');if(before<TRUST&&f.trust>=TRUST){toast(`${f.name} trusts you now 💛`);chat(f,'happy',true);}}}
+ if(goal===null&&!flee&&!stop&&hungry&&foods.length&&(f.kind!=='drift'||Math.random()<0.6)){let best=null,bd=1e9;for(const fd of foods){if(f.kind==='ground'&&!fd.rest&&fd.p[1]>T.floorY+1.6)continue;const d=Math.hypot(fd.p[0]-head[0],fd.p[1]-head[1],(fd.p[2]-head[2])*0.6);if(d<bd){bd=d;best=fd;}}
+  if(best){goal=best.p;act='food';f.foodTarget=best;speed*=f.kind==='drift'?1.4:2.0;steer=2.6;arrive=false;
+   if(fishes.some(o=>o!==f&&o.foodTarget===best))speed*=1.25;
+   if(bd<0.16+sc*0.15&&f.eatCD<=0){foods.splice(foods.indexOf(best),1);eat(f,0.11);
+    for(const o of fishes)if(o!==f&&o.foodTarget===best&&V3.dist(o.pos,f.pos)<L*2.2&&o.sulkT<=0){o.sulkT=2.4;o.foodTarget=null;chat(o,'huff',true);}}}}
+ if(goal===null&&!flee&&!stop){
+  if(f.kiss){act='kiss';const k=f.kiss;goal=k.pt;force=k.face;speed*=1.3;steer=3;if(V3.dist(f.pos,goal)<0.12)stop=true;}
+  else if(inTag(f)){act='tag';const it=tagG.it;if(f===it){let tgt=null,td=1e9;for(const o of tagG.players){if(o===f||(o===tagG.last&&tagG.immune>0))continue;const d=V3.dist(o.pos,f.pos);if(d<td){td=d;tgt=o;}}
+    if(tgt){goal=tgt.pos;speed*=1.9;steer=3.5;arrive=false;if(td<(sc+fishScale(tgt))*0.38){tagG.last=f;tagG.it=tgt;tagG.immune=1.4;chat(tgt,'fun',true);burst(tgt.pos,6,0.2);sBlip(0.08,900);tgt.flash=0.6;}}}
+   else{const d=V3.dist(it.pos,f.pos);if(d<L*3.2){goal=V3.add(f.pos,V3.mul(V3.norm(V3.sub(f.pos,it.pos)),2.5));speed*=1.75;steer=3;arrive=false;}else{goal=f.tgt;if(V3.dist(f.pos,goal)<0.4||f.tT<=0)pickTarget(f);}}}
+  else if(f.guard){act='guard';f.guard.t-=dt;goal=f.guard.who.pos;speed*=2.3;steer=4;arrive=false;if(f.guard.t<=0||!fishes.includes(f.guard.who))f.guard=null;}
+  else if(f.sulkT>0){act='sulk';goal=[f.pos[0],f.pos[1]-0.4,f.pos[2]];speed*=0.3;}
+  else if(f.peerT>0){act='peer';goal=f.peerPt;speed*=1.5;steer=2.5;if(V3.dist(f.pos,goal)<0.35){stop=true;force=f.peerFace;if(!f.peered){f.peered=1;chat(f,'look');}}}
+  else if(asleep){act='sleep';if(!f.sleepPt)f.sleepPt=sleepPoint(f);goal=f.sleepPt;speed*=0.35;if(Math.random()<dt*0.1)chat(f,'sleep');}
+  else if(f.toy){act='toy';toyBehave(f,dt,time);goal=f.toy?f.toy.goal:f.tgt;if(f.toy){speed*=f.toy.spd||1;steer=f.toy.steer||2;stop=!!f.toy.stop;force=f.toy.face===undefined?null:f.toy.face;arrive=f.toy.type!=='ball';}}
+  else if(f.leader&&fishes.includes(f.leader)&&!busy(f.leader)){act='school';const ld=f.leader,ls=fishScale(ld),k=f.slot,row=Math.ceil(k/2),lat=k%2?1:-1,dir=ld.side===0?1:-1;
+   goal=[ld.pos[0]+dir*(ls*0.5+half+0.25)*row*0.8,ld.pos[1]+lat*0.35*L,clamp(ld.pos[2]+lat*0.55,T.zMin,T.zMax)];const d=V3.dist(f.pos,goal);speed*=d>L?1.5:1.05;steer=2.4;}
+  else if(f.mama&&fishes.includes(f.mama)&&f.duckT>0){act='duck';f.duckT-=dt;const chain=fishes.filter(o=>o.mama===f.mama&&o.duckT>0).sort((a,b)=>a.duckIdx-b.duckIdx);const i=chain.indexOf(f);const ld=i>0?chain[i-1]:f.mama,ls=fishScale(ld),dir=ld.side===0?1:-1;
+   goal=[ld.pos[0]+dir*(ls*0.5+half+0.12),ld.pos[1]+0.06,ld.pos[2]];speed*=V3.dist(f.pos,goal)>L?1.6:1.15;steer=2.6;if(f.duckT<=0){f.mama=null;f.duckCD=rand(25,50);}}
+  else{goal=f.tgt;if(V3.dist(goal,f.pos)<0.35||f.tT<=0)chooseIdle(f);goal=f.toy?f.toy.goal:f.tgt;}}
+ // territory: bottom dwellers guard their rock
+ if(f.kind==='ground'&&awake(f)&&!f.guard&&f.guardCD<=0&&(act==='wander'||act==='sleep'||act==='toy')){const h=homeRock(f);if(h){const gp=[h.x,T.floorY,h.z+h.sz*0.6];for(const o of fishes){if(o===f||!o.vis||o.spawn>0||o.id===f.best)continue;
+   if(Math.hypot(o.pos[0]-gp[0],o.pos[2]-gp[2])<h.sx+L*0.8&&o.pos[1]<T.floorY+h.sy*2+L*0.8){f.guard={who:o,t:1.4};f.puffT=1.6;f.guardCD=rand(9,15);chat(f,'huff',true);sHuff();o.scared=0.9;o.fleeDir=V3.norm([o.pos[0]-f.pos[0],0.6,rand(-0.3,0.3)]);chat(o,'scared');break;}}}}
+ // move
+ let des;
+ if(flee)des=V3.mul(flee,speed);
+ else if(stop||!goal)des=[0,0,0];
+ else{const v=V3.sub(goal,f.pos);const dl=V3.len(v)||1;const ar=arrive?clamp(dl/1.2,0.3,1):clamp(dl/0.4,0.4,1);des=V3.mul(v,speed*ar/dl);
+  if(f.kind==='drift'&&act!=='lure'&&act!=='call'){des[1]+=Math.sin(time*1.1+f.hop)*0.18;des[0]*=0.7;}
+  if(f.kind==='ground'&&!['food','hand','lure','call','party','hide','guard'].includes(act))des[1]=(T.floorY+0.15+half*asp*0.6-f.pos[1])*2;}
+ for(let j=0;j<fishes.length;j++){const o=fishes[j];if(o===f||!o.vis||o.spawn>0)continue;if(f.kiss&&f.kiss.p===o)continue;const dx=f.pos[0]-o.pos[0],dy=f.pos[1]-o.pos[1],dz=f.pos[2]-o.pos[2],d=Math.hypot(dx,dy,dz*1.4),r=(sc+fishScale(o))*0.42;
+  if(d<r&&d>0.001&&act!=='pet'){const k=(r-d)/r*Math.max(speed,0.3)*1.5;des[0]+=dx/d*k;des[1]+=dy/d*k;des[2]+=dz/d*k;}
+  if(d<L*1.8){f.friend[o.id]=(f.friend[o.id]||0)+dt;if(f.friend[o.id]>(f.heartAt||40)&&Math.random()<dt*0.5){f.heartAt=f.friend[o.id]+rand(40,80);addSprite({kind:'heart',p:[(f.pos[0]+o.pos[0])/2,(f.pos[1]+o.pos[1])/2+0.4,(f.pos[2]+o.pos[2])/2],life:1.8,sz:0.26,vel:[0,0.45,0]});}}}
+ const turnLag=Math.abs(Math.cos((f.yaw-f.side)/2));
+ const k=1-Math.exp(-(stop?5:steer)*dt);for(let i=0;i<3;i++)f.vel[i]=lerp(f.vel[i],des[i]*(0.45+0.55*turnLag),k);
+ for(let i=0;i<3;i++)f.pos[i]+=f.vel[i]*dt;
+ const xl=Math.max(0.1,xLim(f.pos[2],half));if(f.pos[0]<-xl){f.pos[0]=-xl;f.vel[0]=Math.abs(f.vel[0])*0.3;}if(f.pos[0]>xl){f.pos[0]=xl;f.vel[0]=-Math.abs(f.vel[0])*0.3;}
+ const yMin=T.floorY+half*asp*0.5+0.05;f.pos[1]=clamp(f.pos[1],yMin,T.topY-0.15);
+ const zLow=(act==='hide'||act==='sleep')?-7:f.pers==='shy'?T.zMin-0.9:T.zMin-0.5;f.pos[2]=clamp(f.pos[2],zLow,T.zMax+0.3);
+ if(force!==null)f.side=force;else if(f.vel[0]<-0.06)f.side=0;else if(f.vel[0]>0.06)f.side=Math.PI;
+ const hs=Math.hypot(f.vel[0],f.vel[2])+0.05;let dev=stop?0:clamp(Math.asin(clamp(f.vel[2]/hs,-1,1)),-0.42,0.42);const yt=f.side===0?dev:Math.PI-dev;
+ let dy=yt-f.yaw;while(dy>Math.PI)dy-=Math.PI*2;while(dy<-Math.PI)dy+=Math.PI*2;f.yaw+=clamp(dy,-dt*3.6,dt*3.6);
+ const sp=V3.len(f.vel);f.fast=sp/L;const pitch=f.kind==='ground'||stop?0:clamp(f.vel[1]/(sp+0.15),-0.7,0.7)*(f.kind==='drift'?0.2:0.55);f.roll=lerp(f.roll,-pitch,1-Math.exp(-4*dt));
+ const wig=f.wiggle,turning=Math.abs(dy)>0.4?1.6:1,drift=f.kind==='drift';
+ if(act==='pet'){f.phase+=dt*15;f.wave=lerp(f.wave,0.12,1-Math.exp(-5*dt));}
+ else if(act==='sleep'&&V3.dist(f.pos,f.sleepPt)<0.6){f.phase+=dt*1.1;f.wave=lerp(f.wave,0.022,1-Math.exp(-2*dt));}
+ else{f.phase+=dt*(drift?1.6:(2.6+sp/L*7))*wig*turning*(stop?1.4:1);f.wave=lerp(f.wave,(drift?0.05:0.05+clamp(sp/L,0,1.5)*0.07)*wig*(f.scared>0||act==='tag'?1.7:1)*turning*(atMirror?1.6:1),1-Math.exp(-3*dt));}
+ f.act=act;
+ // ambient chatter
+ if(!asleep){if(f.hunger>0.7&&Math.random()<dt*0.03)chat(f,'hungry');
+  if(f.best&&Math.random()<dt*0.02){const b=fishes.find(o=>o.id===f.best);if(b&&V3.dist(b.pos,f.pos)<L*1.6)chat(f,'love');}
+  if(f.trickCD<=0&&(f.pers==='playful'||f.pers==='bold')&&act==='wander'&&Math.random()<dt*0.05)doTrick(f);}
+ f.bubT-=dt;if(f.bubT<0){f.bubT=asleep?rand(8,16):rand(4,11);const n=1+(Math.random()*3|0);for(let i=0;i<n;i++)setTimeout(()=>addBubble(head[0],head[1]+0.05,head[2],rand(0.035,0.07),rand(0.6,1)),i*180);}
+ if(f.poopT>0){f.poopT-=dt;if(f.poopT<=0){f.poopT=-1;if(dirts.length<40)dirts.push({p:[f.pos[0]+rand(-0.2,0.2),T.floorY+0.012,f.pos[2]+rand(-0.2,0.2)],s:rand(0.12,0.2)*T.dec,rot:rand(0,6),a:0});if(dirts.length===10)toast('The sand is getting grubby. Grab the 🧽 to tidy up!');}}
+ setRender(f);}
+function setRender(f){const tr=f.trick;let ry=f.yaw,rr=f.roll,oy=0;if(tr){const e=ease(clamp(tr.t/tr.dur,0,1));if(tr.type==='spin')ry+=Math.PI*2*e;else if(tr.type==='loop')rr-=Math.PI*2*e;else oy=Math.sin(Math.PI*clamp(tr.t/tr.dur,0,1))*fishScale(f)*0.6;}f.rYaw=ry;f.rRoll=rr;f.rOffY=oy;}
+
+function chooseIdle(f){const play=f.pers==='playful'?0.55:f.pers==='bold'?0.28:f.pers==='normal'?0.12:0.04;
+ const avail=[];if(toys.ball)avail.push('ball');if(toys.hoop&&f.kind==='swim')avail.push('hoop');
+ if(toys.mirror&&f===vainFish&&f.playCD<=0&&Math.random()<0.6){f.toy={type:'mirror',t:0,dur:rand(9,13),sx:f.pos[0]<toys.mirror.p[0]?-1:1};f.playCD=rand(12,25);return;}
+ if(avail.length&&f.playCD<=0&&f.kind!=='ground'&&Math.random()<play){const type=avail[(Math.random()*avail.length)|0];f.toy={type,t:0,dur:type==='hoop'?14:rand(8,14),phase:0};f.playCD=rand(10,24);return;}
+ pickTarget(f);}
+function toyBehave(f,dt,time){const ty=f.toy,L=T.baseLen,half=fishScale(f)*0.5;ty.t+=dt;ty.stop=false;ty.face=undefined;
+ if(ty.t>ty.dur){f.toy=null;pickTarget(f);return;}
+ if(ty.type==='ball'){if(!toys.ball){f.toy=null;return;}const b=toys.ball;ty.goal=b.p;ty.spd=1.7;ty.steer=2.8;}
+ else if(ty.type==='hoop'){const h=toys.hoop;if(!h){f.toy=null;return;}const n=h.n;if(ty.phase===0){ty.sgn=Math.sign((f.pos[0]-h.c[0])*n[0]+(f.pos[2]-h.c[2])*n[2])||1;ty.phase=1;}
+  if(ty.phase===1){ty.goal=V3.add(h.c,V3.mul(n,ty.sgn*(half+h.r*0.9)));ty.spd=1.3;ty.steer=3;if(V3.dist(f.pos,ty.goal)<0.35)ty.phase=2;}
+  else{ty.goal=V3.add(h.c,V3.mul(n,-ty.sgn*(half*2+h.r)));ty.spd=1.8;ty.steer=3.5;const s=Math.sign((f.pos[0]-h.c[0])*n[0]+(f.pos[2]-h.c[2])*n[2]);
+   if(s===-ty.sgn&&!ty.passed){const rel=V3.sub(f.pos,h.c);const along=rel[0]*n[0]+rel[2]*n[2];const radial=V3.len(V3.sub(rel,V3.mul(n,along)));if(radial<h.r*1.1){ty.passed=1;sparkleAt(h.c,8,1.5);sSwish();chat(f,'fun');if(Math.random()<0.35)doTrick(f,'hop',false);}}
+   if(V3.dist(f.pos,ty.goal)<0.45){if(ty.passed&&Math.random()<0.5){ty.phase=0;ty.passed=0;}else{f.toy=null;pickTarget(f);}}}}
+ else if(ty.type==='mirror'){const m=toys.mirror;if(!m){f.toy=null;return;}ty.goal=[m.p[0]+ty.sx*(m.w*0.5+half+0.12),m.p[1]+m.h*0.05,m.p[2]+0.3];ty.spd=1.2;ty.steer=2.5;
+  if(V3.dist(f.pos,ty.goal)<0.3)ty.at=true;if(ty.at){ty.stop=true;ty.face=ty.sx>0?0:Math.PI;if(Math.random()<dt*0.9)sparkleAt([f.pos[0],f.pos[1]+half*0.3,f.pos[2]],1,1);if(!ty.said){ty.said=1;chat(f,'sparkle',true);}if(ty.t>5&&!ty.spun){ty.spun=1;startTrick(f,'spin');}}}}
+
+/* ---- tank-wide systems ---- */
+let lure={on:false,p:[0,0,0]},hand={on:false,p:[0,0,0]},tagG=null,tagCD=rand(40,70),partyG=null,partyQ=[],partyCD=8,groupT=0,kissT=0,bdayT=3,vainFish=null;
+const toys={ball:null,hoop:null,mirror:null};
+function updateGroups(){const L=T.baseLen;const sw=fishes.filter(f=>f.vis&&f.kind==='swim'&&f.spawn<=0);
+ const par=new Map(sw.map(f=>[f,f]));const find=f=>{while(par.get(f)!==f)f=par.get(f);return f;};
+ for(let i=0;i<sw.length;i++)for(let j=i+1;j<sw.length;j++){const a=sw[i],b=sw[j],ca=a.vis.avg,cb=b.vis.avg;const cd=Math.hypot(ca[0]-cb[0],ca[1]-cb[1],ca[2]-cb[2]),ar=a.vis.asp/b.vis.asp;
+  if(cd<0.2||(cd<0.34&&ar>0.86&&ar<1.16))par.set(find(a),find(b));}
+ const groups=new Map();for(const f of sw){const r=find(f);if(!groups.has(r))groups.set(r,[]);groups.get(r).push(f);}
+ for(const f of fishes){f.leader=null;f.slot=0;}
+ for(const g of groups.values()){if(g.length<2)continue;g.sort((a,b)=>b.level-a.level||a.born-b.born);g.forEach((f,i)=>{if(i){f.leader=g[0];f.slot=i;}});}
+ // ducklings follow a much bigger fish
+ for(const f of sw){if(f.leader||f.mama||f.duckCD>0||fishes.some(o=>o.mama===f))continue;if(Math.random()>0.08)continue;const s=fishScale(f);let best=null,bd=L*7;
+  for(const o of sw){if(o===f||o.mama||fishScale(o)<s*1.3)continue;const d=V3.dist(o.pos,f.pos);if(d<bd){bd=d;best=o;}}
+  if(best){f.mama=best;f.duckT=rand(20,40);f.duckIdx=performance.now();chat(f,'love');}}
+ // the show-off for the mirror
+ const vc=fishes.filter(f=>f.vis&&f.kind!=='ground'&&(f.pers==='playful'||f.pers==='bold'));vainFish=vc.sort((a,b)=>b.level-a.level||(a.id<b.id?-1:1))[0]||fishes.find(f=>f.vis&&f.kind==='swim')||null;
+ for(const f of fishes)if(Math.random()<0.4)bestFriendOf(f);}
+function bestFriendOf(f){let b=null,bv=30;for(const k in f.friend)if(f.friend[k]>bv&&fishes.find(o=>o.id===k)){bv=f.friend[k];b=k;}f.best=b;return b?fishes.find(o=>o.id===b):null;}
+function scheduleKisses(){const L=T.baseLen;for(const f of fishes){if(f.kiss||f.kissCD>0||!f.best||!f.vis||busy(f)||!awake(f)||f.kind==='ground')continue;const o=fishes.find(x=>x.id===f.best);
+  if(!o||o.best!==f.id||o.kiss||busy(o)||!awake(o)||o.kind==='ground'||V3.dist(o.pos,f.pos)>L*5)continue;
+  const mid=V3.mul(V3.add(f.pos,o.pos),0.5);mid[1]=clamp(mid[1],T.floorY+L*0.6,T.topY-0.6);mid[2]=clamp(mid[2],T.zMin,T.zMax);const left=f.pos[0]<o.pos[0]?f:o,right=left===f?o:f;
+  left.kiss={p:right,pt:[mid[0]-fishScale(left)*0.47,mid[1],mid[2]],face:Math.PI,t:0,mid};right.kiss={p:left,pt:[mid[0]+fishScale(right)*0.47,mid[1],mid[2]],face:0,t:0,mid};}}
+function updateKisses(dt){for(const f of fishes){const k=f.kiss;if(!k)continue;k.t+=dt;const o=k.p;
+  if(!fishes.includes(o)||!o.kiss||k.t>10||f.scared>0||f.hide>0){f.kiss=null;f.kissCD=rand(40,80);continue;}
+  if(!k.done&&V3.dist(f.pos,k.pt)<0.2&&V3.dist(o.pos,o.kiss.pt)<0.2){k.done=o.kiss.done=k.t;if(f.pos[0]<o.pos[0]){burst(k.mid,10,0.12);addSprite({kind:'heart',p:[k.mid[0],k.mid[1]+0.35,k.mid[2]+0.2],life:1.8,sz:0.3*T.dec,vel:[0,0.5,0]});sKiss();chat(f,'love',true);}}
+  if(k.done&&k.t-k.done>1.3){f.kiss=null;o.kiss=null;f.kissCD=rand(60,120);o.kissCD=rand(60,120);pickTarget(f);pickTarget(o);}}}
+function updateTag(dt){if(tagG){tagG.t+=dt;tagG.immune-=dt;tagG.players=tagG.players.filter(f=>fishes.includes(f)&&f.hide<=0&&f.scared<=0&&awake(f));
+  if(tagG.t>tagG.dur||tagG.players.length<2||!tagG.players.includes(tagG.it)){for(const f of tagG.players)chat(f,'party');tagG=null;tagCD=rand(50,100);}return;}
+ tagCD-=dt;if(tagCD>0||nightK>0.5)return;const c=fishes.filter(f=>f.vis&&f.kind==='swim'&&!busy(f)&&awake(f)&&f.pers!=='shy');
+ if(c.length<2){tagCD=15;return;}c.sort((a,b)=>(b.pers==='playful')-(a.pers==='playful')+rand(-0.5,0.5));const players=c.slice(0,Math.min(c.length,2+((Math.random()*3)|0)));
+ tagG={players,it:players[(Math.random()*players.length)|0],t:0,dur:22,immune:0,last:null};for(const f of players){f.toy=null;f.mama=null;}chat(tagG.it,'fun',true);}
+function checkBirthdays(){const now=Date.now();for(const f of fishes){const yrs=Math.floor((now-f.born)/DAY);if(yrs>=1&&(f.partyYear||0)<yrs&&!partyQ.includes(f)&&(!partyG||partyG.f!==f))partyQ.push(f);}}
+function updateParty(dt){if(partyG){const P=partyG;P.t+=dt;if(!fishes.includes(P.f)){partyG=null;return;}
+  P.cT-=dt;if(P.cT<0&&P.t>1.5){P.cT=0.5;confetti([P.c[0],P.c[1]+fishScale(P.f)*0.6,P.c[2]],5);}
+  if(!P.said&&P.t>2){P.said=1;chat(P.f,'cake',true);sParty();toast(`🎂 Happy birthday ${P.f.name}! ${P.yrs} fish-year${P.yrs>1?'s':''} old`,3600);for(const g of P.guests)setTimeout(()=>{if(fishes.includes(g))chat(g,'party',true);},rand(300,1500));}
+  if(P.t>P.dur){P.f.partyYear=P.yrs;scalesW.push({p:[P.f.pos[0],P.f.pos[1],P.f.pos[2]+0.1],vy:0.4,vx:rand(-0.3,0.3),rest:false,rot:0,t:0});confetti(P.c,20);sChime();partyG=null;partyCD=45;save();}return;}
+ partyCD-=dt;if(partyCD>0||!partyQ.length||nightK>0.5||tagG)return;const f=partyQ.shift();if(!fishes.includes(f)||!f.vis)return;
+ const yrs=Math.floor((Date.now()-f.born)/DAY);partyG={f,yrs,t:0,dur:13,cT:0,c:[0,lerp(T.floorY,T.topY,0.5),0.6],guests:fishes.filter(o=>o!==f&&o.vis&&o.kind!=='ground')};
+ for(const o of [f,...partyG.guests]){o.toy=null;o.mama=null;}}
+function updateBall(dt){const b=toys.ball;if(!b)return;if(b.held)return;const r=b.r;b.v[1]-=0.32*dt;const dr=Math.exp(-0.55*dt);b.v=b.v.map(v=>v*dr);for(let i=0;i<3;i++)b.p[i]+=b.v[i]*dt;
+ if(b.p[1]<T.floorY+r){b.p[1]=T.floorY+r;if(b.v[1]<-0.15)sBounce(0.03);b.v[1]=Math.abs(b.v[1])*0.5;b.v[0]*=0.92;b.v[2]*=0.92;}
+ if(b.p[1]>T.topY-r){b.p[1]=T.topY-r;b.v[1]=-Math.abs(b.v[1])*0.4;}
+ const xl=xLim(b.p[2],r);if(b.p[0]<-xl){b.p[0]=-xl;b.v[0]=Math.abs(b.v[0])*0.7;}if(b.p[0]>xl){b.p[0]=xl;b.v[0]=-Math.abs(b.v[0])*0.7;}
+ if(b.p[2]<-2.4){b.p[2]=-2.4;b.v[2]=Math.abs(b.v[2])*0.6;}if(b.p[2]>1.8){b.p[2]=1.8;b.v[2]=-Math.abs(b.v[2])*0.6;}
+ b.rot-=b.v[0]*dt/r;
+ for(const f of fishes){if(!f.vis||f.spawn>0||f.ballCD>0)continue;const head=fishHead(f),sc=fishScale(f);const d=Math.min(V3.dist(head,b.p),V3.dist(f.pos,b.p));if(d<r+sc*0.25){const dir=V3.norm(V3.sub(b.p,f.pos));const k=0.9+V3.len(f.vel)*0.9;b.v=V3.add(b.v,V3.add(V3.mul(dir,k),[0,0.45,0]));f.ballCD=0.45;sBounce(0.06);if(f.toy&&f.toy.type==='ball'&&Math.random()<0.4)chat(f,'fun');}}}
+function makeHoop(){const h=toys.hoop,th=0.8;const n=[Math.cos(th),0,Math.sin(th)],hz=[-Math.sin(th),0,Math.cos(th)],up=[0,1,0];h.n=n;const R=h.r,rt=0.07*T.dec,A=[],NR=36,NT=8;
+ const pt=(a,b)=>{const rad=V3.add(V3.mul(hz,Math.cos(a)),V3.mul(up,Math.sin(a)));const nn=V3.add(V3.mul(rad,Math.cos(b)),V3.mul(n,Math.sin(b)));return[V3.add(h.c,V3.add(V3.mul(rad,R),V3.mul(nn,rt))),nn];};
+ for(let i=0;i<NR;i++)for(let j=0;j<NT;j++){const a0=i/NR*Math.PI*2,a1=(i+1)/NR*Math.PI*2,b0=j/NT*Math.PI*2,b1=(j+1)/NT*Math.PI*2;const col=(i>>1)%2?[1,1,1]:[0.95,0.25,0.3];
+  for(const[a,b]of[[a0,b0],[a1,b0],[a0,b1],[a1,b0],[a1,b1],[a0,b1]]){const[p,nn]=pt(a,b);A.push(p[0],p[1],p[2],nn[0],nn[1],nn[2],col[0],col[1],col[2]);}}
+ if(hoopBuf)gl.deleteBuffer(hoopBuf);hoopBuf=mkBuf(new Float32Array(A));hoopCount=A.length/9;}
+function setToy(name,on){if(!on){toys[name]=null;for(const f of fishes)if(f.toy&&f.toy.type===name)f.toy=null;}
+ else if(name==='ball')toys.ball={p:[rand(-1,1),lerp(T.floorY,T.topY,0.6),0.4],v:[0,0,0],r:0.3*T.dec,rot:0};
+ else if(name==='hoop'){toys.hoop={c:[-xLim(-0.5,0)*0.35,lerp(T.floorY,T.topY,0.55),-0.5],r:0.62*T.baseLen};makeHoop();}
+ else if(name==='mirror'){const h=1.25*T.baseLen;toys.mirror={p:[xLim(-0.6,0)*0.55,T.floorY+h*0.5-0.02,-0.6],h,w:h*0.72};}
+ S.toys[name]=!!on;save();}
+
+let stoneT=0,dustInit=false,blipT=2,murk=0,nightK=0;
+function updateWorld(dt,time){
+ nightK=lerp(nightK,S.night?1:0,1-Math.exp(-2*dt));
+ for(let i=0;i<fishes.length;i++)updateFish(fishes[i],dt,time,i);
+ groupT-=dt;if(groupT<0){groupT=2;updateGroups();}
+ kissT-=dt;if(kissT<0){kissT=1.5;if(nightK<0.5)scheduleKisses();}
+ updateKisses(dt);updateTag(dt);updateParty(dt);updateBall(dt);
+ bdayT-=dt;if(bdayT<0){bdayT=5;checkBirthdays();}
+ if(S.scene==='wreck'&&sceneFx.chest&&Math.random()<dt*1.6)addSprite({kind:'spark',p:V3.add(sceneFx.chest,[rand(-0.35,0.35)*T.dec,rand(-0.1,0.15),0.35]),life:0.7,sz:rand(0.08,0.15)*T.dec,vel:[0,0.15,0]});
+ if(S.scene==='wreck'&&sceneFx.chest&&Math.random()<dt*0.12)burst(V3.add(sceneFx.chest,[0,0.1,0]),4,0.15);
+ for(let i=foods.length-1;i>=0;i--){const fd=foods[i];fd.t+=dt;if(!fd.rest){fd.p[1]+=fd.vy*dt;fd.p[0]+=Math.sin(fd.t*2+fd.ph)*0.12*dt;if(fd.p[1]<=T.floorY+0.05){fd.p[1]=T.floorY+0.05;fd.rest=1;}}else{fd.rest+=dt;if(fd.rest>30)foods.splice(i,1);}}
+ if(S.bubbles){stoneT-=dt;if(stoneT<0){stoneT=0.07/(1-nightK*0.6);for(const s of stones)if(Math.random()<0.75)addBubble(s[0]+rand(-0.06,0.06),s[1],s[2]+rand(-0.06,0.06),rand(0.03,0.11));}}
+ blipT-=dt;if(blipT<0){blipT=rand(0.6,2.2);if(S.bubbles)sBlip(rand(0.008,0.02)*(1-nightK*0.6),rand(500,900));}
+ for(let i=bubbles.length-1;i>=0;i--){const b=bubbles[i];b.p[1]+=b.vy*dt;b.ph+=dt*4;b.p[0]+=Math.sin(b.ph)*0.25*dt*(0.5+b.s*5);if(b.p[1]>T.topY+0.35){b.a-=dt*6;if(b.a<=0)bubbles.splice(i,1);}}
+ if(!dustInit){dustInit=true;for(let i=0;i<110;i++)dust.push({p:[rand(-12,12),rand(T.floorY,T.topY+1),rand(-7,3)],ph:rand(0,6),s:rand(0.02,0.05)});}
+ for(const d of dust){d.ph+=dt*0.3;d.p[0]+=Math.sin(d.ph)*0.04*dt+0.03*dt;d.p[1]+=Math.cos(d.ph*0.7)*0.03*dt;if(d.p[0]>12)d.p[0]=-12;}
+ for(let i=sprites.length-1;i>=0;i--){const s=sprites[i];s.t+=dt;if(s.g){s.vel[1]-=s.g*dt;s.vel[0]*=Math.exp(-1.5*dt);s.vel[1]=Math.max(s.vel[1],-0.5);s.rot+=(s.spin||0)*dt;}for(let k=0;k<3;k++)s.p[k]+=s.vel[k]*dt;if(s.t>s.life)sprites.splice(i,1);}
+ for(let i=chats.length-1;i>=0;i--){const c=chats[i];c.t+=dt;if(c.t>c.life||!fishes.includes(c.f))chats.splice(i,1);}
+ for(const s of scalesW){s.t+=dt;if(!s.rest){s.vy-=dt*0.9;s.vy=Math.max(s.vy,-0.55);s.p[1]+=s.vy*dt;s.p[0]+=s.vx*dt;s.vx*=0.98;s.rot=Math.sin(s.t*3)*0.5;if(s.p[1]<=T.floorY+0.18){s.p[1]=T.floorY+0.18;s.rest=true;}}else s.rot=Math.sin(s.t*1.5)*0.15;}
+ for(const d of dirts)d.a=Math.min(1,d.a+dt);
+ murk=lerp(murk,clamp(dirts.length/30,0,1),dt*0.5);}
+
+/* =========================== RENDER =========================== */
+let theme=THEMES[0],TC={},TE={};
+let curRays=1,curMurk=0;
+function applyTheme(){theme=THEMES.find(t=>t.id===S.theme)||THEMES[0];const sc=scene(),src=theme.id==='lagoon'?sc:theme;TC={top:hex2rgb(src.top),mid:hex2rgb(src.mid),deep:hex2rgb(src.deep),sand:hex2rgb(theme.id==='lagoon'?sc.sand:theme.sand),light:hex2rgb(src.light).map(v=>v*src.li)};curRays=src.rays;curMurk=theme.id==='lagoon'?sc.murk:sc.murk*0.4;document.body.style.background=src.deep;}
+function nightColours(){const k=nightK,d=(c,m)=>c.map((v,i)=>v*lerp(1,m[i],k));TE={top:d(TC.top,[0.2,0.24,0.42]),mid:d(TC.mid,[0.2,0.22,0.38]),deep:d(TC.deep,[0.35,0.35,0.5]),sand:d(TC.sand,[0.28,0.3,0.42]),light:d(TC.light,[0.25,0.3,0.48])};$('#vignette').style.opacity=1+k*0.6;}
+function commonU(o,time){uM(o,'uVP',VP);u3(o,'uTop',TE.top);u3(o,'uMid',TE.mid);u3(o,'uDeep',TE.deep);u3(o,'uLight',TE.light);u2(o,'uRes',cv.width,cv.height);u1(o,'uMurk',Math.max(murk,curMurk));u1(o,'uTime',time);u3(o,'uCam',camEye);u1(o,'uCaus',1-nightK*0.75);u1(o,'uRays',S.rays?curRays*(1-nightK*0.85):0);}
+function fishModel(f){const s=fishScale(f)*f.puffK,cy=Math.cos(f.rYaw),sy=Math.sin(f.rYaw),cz=Math.cos(f.rRoll),sz=Math.sin(f.rRoll);
+ return new Float32Array([cy*cz*s,sz*s,-sy*cz*s,0,-cy*sz*s,cz*s,sy*sz*s,0,sy*s,0,cy*s,0,f.pos[0],f.pos[1]+f.rOffY,f.pos[2],1]);}
+const mApply=(m,p)=>[m[0]*p[0]+m[4]*p[1]+m[8]*p[2]+m[12],m[1]*p[0]+m[5]*p[1]+m[9]*p[2]+m[13],m[2]*p[0]+m[6]*p[1]+m[10]*p[2]+m[14]];
+let camR=[1,0,0],camU=[0,1,0],curNC=NC;
+function bindTex(t,nc){gl.bindTexture(gl.TEXTURE_2D,t);curNC=nc;}
+function drawSprite(o,p,cell,szx,szy,rot,flat,tint){u3(o,'uC',p);u2(o,'uSz',szx,szy);u1(o,'uRot',rot||0);u1(o,'uFlat',flat?1:0);u4(o,'uCell',[cell/curNC,0,1/curNC,1]);u4(o,'uTint',tint||[1,1,1,1]);gl.drawArrays(gl.TRIANGLES,0,6);}
+function render(time){gl.viewport(0,0,cv.width,cv.height);gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);nightColours();
+ gl.disable(gl.CULL_FACE);const L=T.baseLen;
+ gl.disable(gl.DEPTH_TEST);gl.depthMask(false);gl.disable(gl.BLEND);let o=P.bg;gl.useProgram(o.p);commonU(o,time);bindAttribs(o,quadBuf,2,[['aP',2,0]]);gl.drawArrays(gl.TRIANGLES,0,3);
+ gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.depthFunc(gl.LEQUAL);
+ o=P.floor;gl.useProgram(o.p);commonU(o,time);u3(o,'uSand',TE.sand);bindAttribs(o,floorBuf,3,[['aP',3,0]]);gl.drawArrays(gl.TRIANGLES,0,6);
+ o=P.lit;gl.useProgram(o.p);commonU(o,time);bindAttribs(o,litBuf,9,[['aP',3,0],['aN',3,3],['aC',3,6]]);gl.drawArrays(gl.TRIANGLES,0,litCount);
+ if(toys.hoop&&hoopBuf){bindAttribs(o,hoopBuf,9,[['aP',3,0],['aN',3,3],['aC',3,6]]);gl.drawArrays(gl.TRIANGLES,0,hoopCount);}
+ o=P.plant;gl.useProgram(o.p);commonU(o,time);bindAttribs(o,plantBuf,10,[['aB',3,0],['aL',3,3],['aS',1,6],['aC',3,7]]);gl.drawArrays(gl.TRIANGLES,0,plantCount);
+ // solid (alpha-tested) sprites: castles, mirror, ball
+ const dimT=[lerp(1,0.35,nightK),lerp(1,0.38,nightK),lerp(1,0.55,nightK),1];
+ o=P.spr;gl.useProgram(o.p);uM(o,'uVP',VP);u3(o,'uR',camR);u3(o,'uU',camU);gl.activeTexture(gl.TEXTURE0);if(o.u.uTex)gl.uniform1i(o.u.uTex,0);bindAttribs(o,sprBuf,2,[['aQ',2,0]]);u1(o,'uCut',0.5);
+ for(const c of castles()){bindTex(c.it._tex,1);drawSprite(o,[c.x,T.floorY+c.h*0.5-c.h*0.04,c.z],0,c.w*0.5,c.h*0.5,0,0,dimT);}
+ bindTex(atlasTex,NC);
+ if(toys.mirror){const m=toys.mirror;drawSprite(o,m.p,7,m.h*0.5,m.h*0.5,0,0,dimT);
+  const vf=fishes.find(f=>f.toy&&f.toy.type==='mirror'&&f.toy.at);if(vf&&vf.vis){bindTex(vf.vis.tex,1);const s=m.h*0.27,ar=vf.vis.asp;drawSprite(o,[m.p[0],m.p[1]-m.h*0.05,m.p[2]+0.03],0,(vf.toy.sx>0?1:-1)*s,s*ar,0,0,[dimT[0]*0.9,dimT[1]*0.95,dimT[2],1]);bindTex(atlasTex,NC);}}
+ if(toys.ball){const b=toys.ball;drawSprite(o,b.p,6,b.r,b.r,b.rot,0,dimT);}
+ u1(o,'uCut',0);
+ // decals
+ gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);
+ for(const f of fishes){if(!f.vis)continue;const s=fishScale(f),hgt=f.pos[1]-T.floorY,k=clamp(1-hgt/(T.topY-T.floorY),0.15,1);drawSprite(o,[f.pos[0],T.floorY+0.01,f.pos[2]],4,s*0.55*(1.4-k*0.5),s*0.22*(1.4-k*0.5),0,1,[1,1,1,0.85*k*k]);}
+ if(toys.ball){const b=toys.ball,k=clamp(1-(b.p[1]-T.floorY)/(T.topY-T.floorY),0.15,1);drawSprite(o,[b.p[0],T.floorY+0.01,b.p[2]],4,b.r*1.6,b.r*0.7,0,1,[1,1,1,0.8*k*k]);}
+ for(const d of dirts)drawSprite(o,d.p,5,d.s,d.s,d.rot,1,[1,1,1,d.a*0.9]);
+ // fish
+ gl.disable(gl.BLEND);gl.depthMask(true);
+ o=P.fish;gl.useProgram(o.p);commonU(o,time);gl.activeTexture(gl.TEXTURE0);if(o.u.uTex)gl.uniform1i(o.u.uTex,0);u1(o,'uNight',nightK);
+ for(const f of fishes){const v=f.vis;if(!v)continue;bindAttribs(o,v.vbo,8,[['aP',3,0],['aN',3,3],['aUv',2,6]]);gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,v.ibo);gl.bindTexture(gl.TEXTURE_2D,v.tex);
+  f._m=fishModel(f);uM(o,'uModel',f._m);u1(o,'uScale',fishScale(f)*f.puffK);u1(o,'uPhase',f.phase);u1(o,'uAmp',f.wave);u1(o,'uGold',fishGold(f));u1(o,'uFlash',f.flash);u1(o,'uBlush',f.blush);u1(o,'uGlow',f.glow?1:0);gl.drawElements(gl.TRIANGLES,v.count,gl.UNSIGNED_SHORT,0);}
+ // hats
+ o=P.spr;gl.useProgram(o.p);bindAttribs(o,sprBuf,2,[['aQ',2,0]]);u1(o,'uCut',0.5);
+ for(const f of fishes){if(!f.vis||!f.hat||!f._m)continue;const it=itemById(f.hat);if(!it||!it._tex)continue;const s=fishScale(f)*f.puffK,top=mApply(f._m,[f.vis.headUV[0]-0.5,(0.5-f.vis.headUV[1])*f.vis.asp,0]);
+  const up=[-Math.cos(f.rYaw)*Math.sin(f.rRoll),Math.cos(f.rRoll),Math.sin(f.rYaw)*Math.sin(f.rRoll)],hw=s*0.24,hh=hw/(it._ar||1);
+  bindTex(it._tex,1);drawSprite(o,[top[0]+up[0]*hh*0.75,top[1]+up[1]*hh*0.75,top[2]+up[2]*hh*0.75+s*0.08],0,hw*Math.cos(f.rYaw),hh,f.rRoll,0,dimT);}
+ u1(o,'uCut',0);bindTex(atlasTex,NC);
+ gl.enable(gl.BLEND);gl.depthMask(false);
+ // glow halos at night
+ if(nightK>0.05){gl.blendFunc(gl.SRC_ALPHA,gl.ONE);for(const f of fishes){if(!f.vis||!f.glow)continue;const s=fishScale(f),c=f.vis.avg;drawSprite(o,[f.pos[0],f.pos[1]+f.rOffY,f.pos[2]-0.05],10,s*0.85,s*0.6*Math.max(0.6,f.vis.asp*1.5),0,0,[c[0]*0.8+0.3,c[1]*0.8+0.3,c[2]*0.8+0.3,nightK*0.55]);}
+  if(lure.on)drawSprite(o,lure.p,10,0.5,0.5,0,0,[1,0.95,0.7,0.5*nightK]);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);}
+ // points
+ o=P.pts;gl.useProgram(o.p);commonU(o,time);u1(o,'uPx',PROJ[5]*cv.height*0.5);
+ const drawPts=(arr,kind,fn)=>{if(!arr.length)return;const data=new Float32Array(arr.length*5);arr.forEach((a,i)=>fn(a,data,i*5));gl.bindBuffer(gl.ARRAY_BUFFER,ptBuf);gl.bufferData(gl.ARRAY_BUFFER,data,gl.DYNAMIC_DRAW);bindAttribs(o,ptBuf,5,[['aP',3,0],['aS',1,3],['aA',1,4]]);if(o.u.uKind)gl.uniform1i(o.u.uKind,kind);gl.drawArrays(gl.POINTS,0,arr.length);};
+ drawPts(dust,2,(d,a,i)=>{a.set([d.p[0],d.p[1],d.p[2],d.s,0.6+0.4*Math.sin(d.ph*3)],i)});
+ const pel=foods.filter(f=>!f.tex);drawPts(pel,1,(f,a,i)=>{a.set([f.p[0],f.p[1],f.p[2],0.075*T.dec,f.rest>25?1-(f.rest-25)/5:1],i)});
+ drawPts(bubbles,0,(b,a,i)=>{a.set([b.p[0],b.p[1],b.p[2],b.s,b.a],i)});
+ // billboards
+ o=P.spr;gl.useProgram(o.p);bindAttribs(o,sprBuf,2,[['aQ',2,0]]);
+ for(const fd of foods){if(!fd.tex)continue;const it=itemById(fd.tex);if(!it||!it._tex)continue;bindTex(it._tex,1);const s=0.13*T.dec;drawSprite(o,fd.p,0,s*Math.min(1.4,it._ar||1),s/Math.max(0.7,it._ar||1),Math.sin(fd.t*2+fd.ph)*0.5,0,[dimT[0],dimT[1],dimT[2],fd.rest>25?1-(fd.rest-25)/5:1]);}
+ if(hand.on){const it=S.food!=='pellet'?itemById(S.food):null;if(it&&it._tex){bindTex(it._tex,1);drawSprite(o,hand.p,0,0.2*T.dec,0.2*T.dec/(it._ar||1),0,0,[1,1,1,1]);}bindTex(atlasTex,NC);if(!it||!it._tex)drawSprite(o,hand.p,11,0.17*T.dec,0.17*T.dec,0,0,[1,1,1,1]);
+  drawSprite(o,hand.p,2,0.32+Math.sin(time*6)*0.04,0.32+Math.sin(time*6)*0.04,0,0,[1,1,1,0.5]);}
+ bindTex(atlasTex,NC);
+ if(lure.on){const s=0.28+Math.sin(time*7)*0.05;drawSprite(o,lure.p,2,s,s,0,0,[1,1,0.85,0.75]);drawSprite(o,lure.p,3,0.18,0.18,time*2,0,[1,1,1,0.8]);}
+ for(const s of scalesW){const g=0.85+0.25*Math.sin(s.t*4);drawSprite(o,s.p,1,0.17*T.dec,0.17*T.dec,s.rot,0,[g,g,g,1]);if(Math.sin(s.t*2.3)>0.92)drawSprite(o,[s.p[0]+0.06,s.p[1]+0.08,s.p[2]+0.05],3,0.12*T.dec,0.12*T.dec,s.t,0,[1,1,1,0.9]);}
+ for(const f of fishes){if(!f.vis||f.fast<1.05||f.pet>0)continue;const s=fishScale(f),dir=f.side===0?1:-1,a=clamp((f.fast-1.05)*1.5,0,0.7),rot=Math.atan2(f.vel[1],f.vel[0]);
+  for(let i=0;i<3;i++)drawSprite(o,[f.pos[0]+dir*s*(0.62+i*0.12),f.pos[1]+(i-1)*s*0.13,f.pos[2]],8,s*0.22,0.035*T.dec,rot,0,[1,1,1,a*(1-i*0.2)]);}
+ if(tagG&&tagG.it&&tagG.it.vis){const f=tagG.it,s=fishScale(f);drawSprite(o,[f.pos[0],f.pos[1]+s*f.vis.asp*0.55+0.2,f.pos[2]+0.1],3,0.16+Math.sin(time*9)*0.03,0.16+Math.sin(time*9)*0.03,time*3,0,[1,0.9,0.4,1]);}
+ for(const s of sprites){const k=s.t/s.life;if(s.kind==='heart')drawSprite(o,s.p,0,s.sz*(0.6+0.4*Math.min(1,k*4)),s.sz*(0.6+0.4*Math.min(1,k*4)),Math.sin(s.t*5)*0.15,0,[1,1,1,1-k*k]);
+  else if(s.kind==='ring')drawSprite(o,s.p,2,s.sz*(0.4+k*1.6),s.sz*(0.4+k*1.6)*0.45,0,1,[1,1,1,(1-k)*0.8]);
+  else if(s.kind==='tap')drawSprite(o,s.p,2,s.sz*(0.3+k*1.5),s.sz*(0.3+k*1.5),0,0,[1,1,1,(1-k)*0.7]);
+  else if(s.kind==='spark')drawSprite(o,s.p,3,s.sz,s.sz,s.t*3,0,[1,1,1,1-k]);
+  else if(s.kind==='conf')drawSprite(o,s.p,9,s.sz,s.sz*0.6*Math.abs(Math.cos(s.t*6)),s.rot,0,[s.tint[0],s.tint[1],s.tint[2],1-Math.max(0,k-0.7)/0.3]);}
+ // chatter bubbles on top
+ gl.disable(gl.DEPTH_TEST);bindTex(emoTex,EMO.length);
+ for(const c of chats){const f=c.f;if(!f.vis)continue;const s=fishScale(f),k=c.t/c.life,pop=Math.min(1,c.t*6),a=1-Math.max(0,k-0.8)/0.2,sz=0.3*clamp(T.dec,0.85,1.2)*(0.7+0.3*pop);
+  drawSprite(o,[f.pos[0]+(f.side===0?-1:1)*s*0.18,f.pos[1]+f.rOffY+s*f.vis.asp*0.5+sz*0.9+(f.hat?s*0.18:0),f.pos[2]+0.2],c.cell,sz,sz,0,0,[1,1,1,a]);}
+ bindTex(atlasTex,NC);
+ gl.blendFunc(gl.ONE,gl.ONE);o=P.rays;gl.useProgram(o.p);commonU(o,time);bindAttribs(o,quadBuf,2,[['aP',2,0]]);gl.drawArrays(gl.TRIANGLES,0,3);
+ gl.disable(gl.BLEND);gl.depthMask(true);}
+
+/* =========================== CAMERA / RESIZE =========================== */
+let lastDecorKey='',camEye=[...CAM],camLook=[...LOOK];
+function setCam(e,l){camEye=e;camLook=l;VIEW=lookAt(e,l,[0,1,0]);VP=mmul(PROJ,VIEW);invVP=inv4(VP);camR=[VIEW[0],VIEW[4],VIEW[8]];camU=[VIEW[1],VIEW[5],VIEW[9]];}
+function resize(){DPR=Math.min(window.devicePixelRatio||1,2);W=innerWidth;H=innerHeight;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);aspect=W/H;
+ PROJ=persp(FOV,aspect,0.1,120);setCam([...CAM],[...LOOK]);
+ const hh=Math.tan(FOV/2)*CAM[2],hw=hh*aspect;T.hh=hh;T.hw=hw;T.floorY=-hh*0.62;T.topY=hh*0.86;T.zMin=-3.2;T.zMax=2.2;
+ T.baseLen=clamp((aspect<1?0.36:0.27)*Math.min(2*hw,2*hh),1.2,2.4);T.dec=clamp(T.baseLen/1.6,0.75,1.3);
+ const key=Math.round(aspect*10)+'_'+S.decorSeed+'_'+S.scene;if(key!==lastDecorKey&&gl){lastDecorKey=key;buildDecor();for(const n of['ball','hoop','mirror'])if(S.toys[n])setToy(n,true);}}
+let rzT;addEventListener('resize',()=>{clearTimeout(rzT);rzT=setTimeout(resize,120);});
+function updateCamera(dt){if(!photo.on){if(camEye[0]!==CAM[0]||camEye[1]!==CAM[1]||camEye[2]!==CAM[2])setCam([...CAM],[...LOOK]);return;}
+ const fp=photo.focus&&fishes.includes(photo.focus)?[photo.focus.pos[0],photo.focus.pos[1],photo.focus.pos[2]]:[...LOOK];const off=V3.sub(CAM,LOOK),z=photo.zoom;
+ const tl=photo.focus?fp:LOOK,te=V3.add(tl,V3.mul(off,1/z));const k=1-Math.exp(-4*dt);setCam(camEye.map((v,i)=>lerp(v,te[i],k)),camLook.map((v,i)=>lerp(v,tl[i],k)));}
+
+/* =========================== INPUT (tank) =========================== */
+let mode='none';
+function setMode(m){mode=mode===m?'none':m;$('#bFeed').classList.toggle('on',mode==='feed');$('#bClean').classList.toggle('on',mode==='clean');document.body.classList.toggle('mode-feed',mode==='feed');document.body.classList.toggle('mode-clean',mode==='clean');
+ if(mode==='feed')hint('Tap to sprinkle food, or hold still to hand-feed 🍤',0);else if(mode==='clean')hint('Scrub the sand to clean up 🧽',0);else hideHint();}
+$('#bFeed').onclick=()=>{setMode('feed');if(mode==='feed'&&!foods.length&&fishes.length)dropFood(rand(-0.5,0.5)*T.hw,rand(-1,0.5));};
+$('#bClean').onclick=()=>setMode('clean');
+function fishAt(sx,sy){let best=null,bz=-1e9;for(const f of fishes){if(!f.vis||f.spawn>0)continue;const c=project(f.pos);if(c[2]<=0)continue;const s=fishScale(f),ppu=H/(2*Math.tan(FOV/2)*c[2]);const rx=Math.max(24,s*0.5*ppu*Math.max(0.35,Math.abs(Math.cos(f.yaw)))),ry=Math.max(22,s*0.5*f.vis.asp*ppu);
+ const dx=(sx-c[0])/rx,dy=(sy-c[1])/ry;if(dx*dx+dy*dy<1.15&&f.pos[2]>bz){bz=f.pos[2];best=f;}}return best;}
+function ppuAt(p){const c=project(p);return[c,H/(2*Math.tan(FOV/2)*c[2])];}
+function toyAt(sx,sy){if(toys.ball){const[c,u]=ppuAt(toys.ball.p);if(Math.hypot(c[0]-sx,c[1]-sy)<Math.max(30,toys.ball.r*u*1.2))return'ball';}
+ if(toys.mirror){const m=toys.mirror,[c,u]=ppuAt(m.p);if(Math.abs(c[0]-sx)<m.w*0.5*u&&Math.abs(c[1]-sy)<m.h*0.5*u)return'mirror';}
+ if(toys.hoop){const h=toys.hoop,[c,u]=ppuAt(h.c);if(Math.hypot(c[0]-sx,(c[1]-sy)*0.8)<h.r*u*1.05&&Math.hypot(c[0]-sx,c[1]-sy)>h.r*u*0.25)return'hoop';}return null;}
+function collectAt(sx,sy,r){let got=0;for(let i=scalesW.length-1;i>=0;i--){const c=project(scalesW[i].p);if(Math.hypot(c[0]-sx,c[1]-sy)<r){const p=scalesW[i].p;scalesW.splice(i,1);got++;for(let k=0;k<6;k++)addSprite({kind:'spark',p:[p[0],p[1],p[2]],life:0.7,sz:0.18,vel:[rand(-1,1),rand(-0.2,1.2),0]});}}
+ if(got){setScales(S.scales+got);sChime();save();}return got;}
+let cleaned=0;
+function scrubAt(sx,sy){let n=0;for(let i=dirts.length-1;i>=0;i--){const c=project(dirts[i].p);if(Math.hypot(c[0]-sx,c[1]-sy)<48){const p=dirts[i].p;dirts.splice(i,1);n++;cleaned++;addSprite({kind:'spark',p:[p[0],p[1]+0.15,p[2]],life:0.8,sz:0.25,vel:[0,0.6,0]});burst([p[0],p[1]+0.1,p[2]],3,0.15);}}
+ if(n){sBlip(0.07,900);if(!dirts.length&&cleaned>=4){cleaned=0;setScales(S.scales+1);sChime();toast('All neat and tidy! +1 golden scale ✨');save();}}collectAt(sx,sy,40);}
+const handPoint=(x,y)=>{const w=screenToPlaneZ(x,y,1.0);return[clamp(w[0],-xLim(1,0.2),xLim(1,0.2)),clamp(w[1],T.floorY+0.3,T.topY-0.2),1.0];};
+let PT=null,tapTimes=[];
+function glassTap(x,y){const now=performance.now();tapTimes=tapTimes.filter(t=>now-t<1000);tapTimes.push(now);const w=screenToPlaneZ(x,y,0.5),L=T.baseLen;
+ addSprite({kind:'tap',p:w,life:0.7,sz:0.6});burst(w,6,0.2);
+ if(tapTimes.length>=3){tapTimes=[];sThud();cv.classList.remove('shake');void cv.offsetWidth;cv.classList.add('shake');
+  for(const f of fishes){if(!f.vis||f.spawn>0)continue;f.toy=null;f.kiss=null;f.peerT=0;f.mama=null;f.scared=0.45;f.fleeDir=V3.norm([f.pos[0]-w[0]||rand(-1,1),rand(-0.2,0.3),-0.7]);f.hide=f.pers==='bold'?3:f.pers==='playful'?4.5:f.pers==='shy'?12:6.5;f.hidePt=hidePoint(f);if(Math.random()<0.6)chat(f,'scared',true);if(!awake(f))f.wakeT=f.hide+2;}
+  if(tagG)tagG=null;if(!S.seen.knock){S.seen.knock=1;toast('Too loud! The fish are hiding. A single gentle tap makes them curious 👀',4200);}return;}
+ sBlip(0.08,450);
+ for(const f of fishes){if(!f.vis||f.spawn>0)continue;const d=Math.hypot(f.pos[0]-w[0],f.pos[1]-w[1]);if(!awake(f)){if(d<L*2.5){f.wakeT=12;}else continue;}
+  if(f.pers==='shy'&&f.trust<TRUST){if(d<L*1.6){f.scared=0.6;f.fleeDir=V3.norm([f.pos[0]-w[0],f.pos[1]-w[1],-0.4]);}continue;}
+  if(d<L*(f.pers==='bold'?6:4.2)&&!f.kiss&&!inTag(f)&&f.callT<=0){f.peerT=4.5;f.peered=0;f.toy=null;f.peerPt=[clamp(w[0]+rand(-0.7,0.7)*L,-xLim(T.zMax,0.5),xLim(T.zMax,0.5)),clamp(w[1]+rand(-0.4,0.4)*L,T.floorY+0.6,T.topY-0.4),T.zMax+rand(-0.3,0.1)];f.peerFace=f.peerPt[0]>f.pos[0]?Math.PI:0;}}}
+cv.addEventListener('pointerdown',e=>{if(openSheet)return;const x=e.clientX,y=e.clientY;
+ if(photo.on){const f=fishAt(x,y);photo.focus=f||null;if(f){f.flash=0.6;sBlip(0.05,800);}return;}
+ PT={x0:x,y0:y,x,y,t0:performance.now(),lt:performance.now(),lx:x,ly:y,moved:false,mode:null,petAcc:0};
+ if(mode==='clean'){PT.kind='clean';scrubAt(x,y);return;}
+ if(collectAt(x,y,44)){PT=null;return;}
+ const toy=toyAt(x,y);if(toy){PT.kind='toy';PT.toy=toy;if(toy==='ball'){toys.ball.held=true;toys.ball.v=[0,0,0];}sBlip(0.05,600);return;}
+ if(mode==='feed'){PT.kind='feed';return;}
+ const f=fishAt(x,y);if(f){PT.kind='fish';PT.fish=f;return;}
+ PT.kind='water';});
+cv.addEventListener('pointermove',e=>{if(!PT)return;const x=e.clientX,y=e.clientY,now=performance.now(),dtm=Math.max(1,now-PT.lt)/1000;const spd=Math.hypot(x-PT.lx,y-PT.ly)/dtm;
+ PT.x=x;PT.y=y;if(Math.hypot(x-PT.x0,y-PT.y0)>12)PT.moved=true;
+ if(PT.kind==='clean')scrubAt(x,y);
+ else if(PT.kind==='toy'){if(PT.toy==='ball'){const b=toys.ball,w=screenToPlaneZ(x,y,b.p[2]);const np=[clamp(w[0],-xLim(b.p[2],b.r),xLim(b.p[2],b.r)),clamp(w[1],T.floorY+b.r,T.topY-b.r),b.p[2]];b.v=V3.mul(V3.sub(np,b.p),1/dtm);b.p=np;}
+  else if(PT.toy==='hoop'){const h=toys.hoop,w=screenToPlaneZ(x,y,h.c[2]);h.c=[clamp(w[0],-xLim(h.c[2],h.r),xLim(h.c[2],h.r)),clamp(w[1],T.floorY+h.r+0.1,T.topY-h.r-0.1),h.c[2]];makeHoop();}
+  else if(PT.toy==='mirror'){const m=toys.mirror,w=screenToPlaneZ(x,y,m.p[2]);m.p[0]=clamp(w[0],-xLim(m.p[2],m.w*0.5),xLim(m.p[2],m.w*0.5));}}
+ else if(PT.kind==='feed'&&PT.mode==='hand')hand.p=handPoint(x,y);
+ else if(PT.kind==='fish'){const f=PT.fish,fc=project(f.pos),near=Math.hypot(fc[0]-x,fc[1]-y)<(PT.mode==='pet'?150:90)||fishAt(x,y)===f;if(near&&PT.moved){if(spd>1900&&PT.mode!=='pet'){f.scared=0.6;f.fleeDir=V3.norm([rand(-1,1),0.3,-0.5]);chat(f,'scared',true);PT.mode='done';}
+   else if(spd>12){PT.petAcc+=dtm;if(PT.petAcc>0.3&&PT.mode!=='pet'&&PT.mode!=='done'){const w=screenToPlaneZ(x,y,f.pos[2]);PT.wx=w[0];PT.mode=petStart(f)?'pet':'done';}if(PT.mode==='pet')f.pet=0.9;}}}
+ else if(PT.kind==='water'&&PT.moved&&PT.mode!=='lure'){PT.mode='lure';lure.on=true;}
+ if(PT.mode==='lure')lure.p=screenToPlaneZ(x,y,0.8);
+ PT.lt=now;PT.lx=x;PT.ly=y;});
+function pointerEnd(){if(!PT)return;const P0=PT;PT=null;
+ if(P0.kind==='fish'&&!P0.mode&&!P0.moved){sSquee();openCard(P0.fish);}
+ else if(P0.kind==='water'){if(!P0.mode)glassTap(P0.x,P0.y);lure.on=false;}
+ else if(P0.kind==='feed'){if(!P0.mode){const w=screenToPlaneZ(P0.x,P0.y,0);if(fishes.length)dropFood(clamp(w[0],-xLim(0,0.3),xLim(0,0.3)),rand(-1.2,0.8));}hand.on=false;}
+ else if(P0.kind==='toy'&&P0.toy==='ball'){const b=toys.ball;b.held=false;b.v=b.v.map(v=>clamp(v,-6,6));}}
+addEventListener('pointerup',pointerEnd);addEventListener('pointercancel',pointerEnd);
+function holdCheck(){if(!PT)return;const held=performance.now()-PT.t0;
+ if(PT.kind==='water'&&!PT.mode&&held>230){PT.mode='lure';lure.on=true;lure.p=screenToPlaneZ(PT.x,PT.y,0.8);if(!S.seen.lure){S.seen.lure=1;toast('Move your finger and the fish will follow it 👆');}}
+ if(PT.kind==='feed'&&!PT.mode&&held>280&&!PT.moved){PT.mode='hand';hand.on=true;hand.p=handPoint(PT.x,PT.y);sBlip(0.06,650);if(!S.seen.hand){S.seen.hand=1;toast('Hand-feeding! Brave fish come straight away. Shy ones need time to trust you 💛',4200);}}}
+
+/* =========================== FISH CARD / LIST / TANK / PLAY =========================== */
+let cardFish=null;
+function hashStr(s){let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))|0;return Math.abs(h);}
+function openCard(f){cardFish=f;$('#fcImg').src=f.tex;$('#fcName').value=f.name;$('#fcLvl').textContent=`Level ${f.level} · ${({swim:'Swimmer',ground:'Bottom dweller',drift:'Drifter'})[f.kind]}`;
+ const days=Math.floor((Date.now()-f.born)/DAY);$('#fcAge').textContent=days<1?'Born today 🎂':`${days} fish-year${days>1?'s':''} old · birthday every day`;
+ $('#fcQuote').textContent='“'+QUOTES[hashStr(f.id)%QUOTES.length]+'”';$('#fcHunger').style.width=Math.round((1-f.hunger)*100)+'%';
+ const g=fishGold(f);$('#fcGold').style.width=Math.round(g*100)+'%';$('#fcGoldLbl').textContent=g>0?`Golden shimmer ${Math.round(g*100)}%`:`Golden shimmer (starts at level 8)`;
+ const hearts=Math.round(clamp(f.trust,0,1)*5);$('#fcTrust').textContent='Trust '+'❤️'.repeat(hearts)+'🤍'.repeat(5-hearts);
+ $('#fcTags').innerHTML='';[PERS[f.pers].n,f.glow?'✨ Glows in the dark':null].filter(Boolean).forEach(t=>{const s=document.createElement('span');s.className='tag';s.textContent=t;$('#fcTags').appendChild(s);});
+ const bf=bestFriendOf(f);$('#fcFriend').textContent=bf?`💞 Best friends with ${bf.name}`:'Still making friends…';
+ renderHatRow();$('#fcRelease').textContent='Release to sea';$('#fcRelease').dataset.arm='';syncCardGroup(f);showSheet('#fishCard');}
+function renderHatRow(){const r=$('#fcHats'),f=cardFish;r.innerHTML='';const hats=S.items.filter(i=>i.type==='hat');$('#fcHatWrap').style.display=hats.length?'block':'none';
+ const mk=(id,html)=>{const b=document.createElement('button');b.className='tpl'+((f.hat||null)===id?' on':'');b.innerHTML=html;b.onclick=()=>{f.hat=id;renderHatRow();save();if(id){f.flash=0.6;chat(f,'happy',true);}};r.appendChild(b);};
+ mk(null,'<span style="font-weight:800;font-size:13px">No hat</span>');hats.forEach(h=>mk(h.id,`<img src="${h.tex}" style="width:100%;height:100%;object-fit:contain">`));}
+$('#fcName').oninput=e=>{if(cardFish){cardFish.name=e.target.value.trim()||'Fishy';save();}};
+function callFish(f){f.callT=7;f.waved=0;f.toy=null;f.kiss=null;f.hide=0;f.mama=null;if(!awake(f))f.wakeT=12;f.callPt=[0,lerp(T.floorY,T.topY,0.48),T.zMax+0.2];chat(f,'look',true);sSquee();}
+$('#fcCall').onclick=()=>{if(!cardFish)return;callFish(cardFish);closeSheet();};
+$('#fcTrick').onclick=()=>{if(!cardFish)return;const f=cardFish;closeSheet();if(!awake(f))f.wakeT=10;setTimeout(()=>doTrick(f),350);};
+$('#fcRelease').onclick=e=>{const b=e.currentTarget;if(!b.dataset.arm){b.dataset.arm='1';b.textContent=view==='group'?'Tap again to take it out':'Tap again to say goodbye';return;}
+ if(view==='group'){const f=cardFish;if(f){removeFromGroup(f.id);toast(`${f.name} left the group tank`);}cardFish=null;closeSheet();return;}
+ const f=cardFish;if(!f)return;const i=fishes.indexOf(f);if(i>=0){burst(f.pos,20,0.4);freeVisual(f.vis);fishes.splice(i,1);for(const o of fishes){if(o.mama===f)o.mama=null;if(o.leader===f)o.leader=null;if(o.kiss&&o.kiss.p===f)o.kiss=null;}}toast(`${f.name} swam off to the big blue sea 🌊`);cardFish=null;closeSheet();updateEmpty();save();};
+$('#bList').onclick=()=>{const g=$('#fishGrid');g.innerHTML='';fishes.forEach(f=>{const d=document.createElement('div');d.className='fcell';d.innerHTML=`<img alt=""><div></div><button class="callBtn" title="Call over">📣</button>`;d.querySelector('img').src=f.tex;d.querySelector('div').textContent=view==='group'&&f.by?`${f.name} · ${f.by}`:`${f.name} · Lv ${f.level}`;
+  d.onclick=()=>openCard(f);d.querySelector('.callBtn').onclick=ev=>{ev.stopPropagation();callFish(f);closeSheet();toast(`📣 ${f.name}! Here, fishy fishy…`);};g.appendChild(d);});
+ $('#listEmpty').textContent=view==='group'?(fishes.length?`${fishes.length} fish in the group tank`:'No fish in the group tank yet. Send one from 🏠 Mine'):fishes.length?`${fishes.length} fish in your tank. Tap 📣 to call one over`:'No fish yet. Tap ✏️ Draw to make your first one!';showSheet('#fishList');};
+function renderThemes(){const g=$('#themeGrid');g.innerHTML='';THEMES.forEach(t=>{const d=document.createElement('div');d.className='theme'+(S.theme===t.id?' on':'');const tc=t.id==='lagoon'?scene():t;d.style.background=`linear-gradient(180deg,${tc.top},${tc.mid} 55%,${tc.deep})`;
+ const owned=S.unlocked.includes(t.id);d.innerHTML=`<span>${t.name}</span><span class="cost">${owned?(S.theme===t.id?'✓ In use':'Owned'):`<span class="scaleIcon" style="width:16px;height:16px"></span> ${t.cost} to unlock`}</span>`;
+ d.onclick=()=>{if(!owned){if(S.scales<t.cost){toast(`You need ${t.cost-S.scales} more golden scale${t.cost-S.scales>1?'s':''}. Feed your fish to level them up!`);return;}setScales(S.scales-t.cost);S.unlocked.push(t.id);sChime();toast(`${t.name} unlocked!`);}S.theme=t.id;applyTheme();renderThemes();save();};g.appendChild(d);});}
+function syncToggles(){$('#tgRays').classList.toggle('on',S.rays);$('#tgBubbles').classList.toggle('on',S.bubbles);$('#tgSound').classList.toggle('on',S.sound);}
+$('#tgRays').onclick=()=>{S.rays=!S.rays;syncToggles();save();};$('#tgBubbles').onclick=()=>{S.bubbles=!S.bubbles;syncToggles();save();};
+$('#tgSound').onclick=()=>{S.sound=!S.sound;if(master)master.gain.value=S.sound?1:0;syncToggles();save();};
+function renderScenes(){const g=$('#sceneGrid');g.innerHTML='';for(const[id,sc]of Object.entries(SCENES)){const d=document.createElement('div');d.className='theme'+(S.scene===id?' on':'');d.style.background=`linear-gradient(180deg,${sc.top},${sc.mid} 55%,${sc.deep})`;d.style.minHeight='96px';
+ d.innerHTML=`<span style="font-size:30px;line-height:1">${sc.emoji}</span><span style="font-size:14px;line-height:1.1">${sc.name}</span>`;d.onclick=()=>setScene(id);g.appendChild(d);}}
+function setScene(id){if(S.scene===id)return;S.scene=id;applyTheme();lastDecorKey='';resize();for(const f of fishes){f.sleepPt=null;f.hidePt=null;f.hide=0;f.home=null;if(f.vis)pickTarget(f);if(nightK>0.5&&f.vis)f.sleepPt=sleepPoint(f);}
+ renderScenes();renderThemes();save();sPlop();toast(`Welcome to the ${SCENES[id].name.toLowerCase()} ${SCENES[id].emoji}`);}
+$('#bTank').onclick=()=>{syncGroupUI();renderScenes();renderThemes();syncToggles();$('#bReset').textContent='Empty the whole tank';$('#bReset').dataset.arm='';showSheet('#tankSheet');};
+$('#bRedecor').onclick=()=>{S.decorSeed=(Math.random()*1e6)|0;lastDecorKey='';resize();save();toast('Tank rearranged 🪨🌿');};
+$('#bReset').onclick=e=>{const b=e.currentTarget;if(!b.dataset.arm){b.dataset.arm='1';b.textContent='Tap again: every fish will be released';return;}fishes.forEach(f=>freeVisual(f.vis));fishes.length=0;dirts.length=0;chats.length=0;tagG=null;partyG=null;partyQ=[];updateEmpty();save();closeSheet();toast('The tank is empty and ready for new doodles');};
+// lights
+function setNight(on){S.night=on;$('#bMoon').textContent=on?'☀️':'🌙';sClick();save();
+ if(on){for(const f of fishes){f.sleepPt=f.vis?sleepPoint(f):null;f.wakeT=0;f.toy=null;f.kiss=null;f.mama=null;}tagG=null;toast(fishes.some(f=>f.glow)?'Lights out. Shh… 💤 Your glowing fish light up the dark ✨':'Lights out. Shh, the fish are sleeping 💤');}
+ else{toast('Good morning, fish! ☀️');fishes.forEach((f,i)=>{if(f.vis&&!f.glow&&Math.random()<0.5)setTimeout(()=>{if(fishes.includes(f)){startTrick(f,'spin');chat(f,'happy');}},400+i*250);pickTarget(f);});}}
+$('#bMoon').onclick=()=>setNight(!S.night);
+// play sheet
+function itemThumb(it,onTap,onDel,on){const b=document.createElement('div');b.className='tpl'+(on?' on':'');b.innerHTML=`<img src="${it.tex}" style="width:100%;height:100%;object-fit:contain"><span class="del">✕</span>`;b.onclick=onTap||null;
+ const d=b.querySelector('.del');d.onclick=ev=>{ev.stopPropagation();if(!d.dataset.arm){d.dataset.arm=1;d.textContent='Sure?';d.classList.add('arm');return;}onDel();};return b;}
+function removeItem(it){S.items=S.items.filter(i=>i!==it);if(it._tex)gl.deleteTexture(it._tex);for(const f of fishes)if(f.hat===it.id)f.hat=null;if(S.food===it.id)S.food='pellet';for(const fd of foods)if(fd.tex===it.id)fd.tex=null;save();renderPlay();}
+function renderPlay(){$$('[data-toy]').forEach(b=>b.classList.toggle('on',!!toys[b.dataset.toy]));
+ const fr=$('#foodRow');fr.innerHTML='';const pel=document.createElement('div');pel.className='tpl'+(S.food==='pellet'?' on':'');pel.innerHTML='<span style="font-size:26px">🟤</span>';pel.onclick=()=>{S.food='pellet';save();renderPlay();};fr.appendChild(pel);
+ S.items.filter(i=>i.type==='food').forEach(it=>fr.appendChild(itemThumb(it,()=>{S.food=it.id;save();renderPlay();toast('Next feed will use your food 🍩');},()=>removeItem(it),S.food===it.id)));
+ const hr=$('#hatRow');hr.innerHTML='';const hats=S.items.filter(i=>i.type==='hat');hats.forEach(it=>hr.appendChild(itemThumb(it,()=>openHatPicker(it),()=>removeItem(it))));$('#hatEmpty').style.display=hats.length?'none':'block';
+ const cr=$('#castleRow');cr.innerHTML='';const cs=S.items.filter(i=>i.type==='castle');cs.forEach(it=>cr.appendChild(itemThumb(it,null,()=>removeItem(it))));$('#castleEmpty').style.display=cs.length?'none':'block';
+ $('#bLights2').textContent=S.night?'☀️ Lights on':'🌙 Lights out';}
+$('#bPlay').onclick=()=>{setMode('none');renderPlay();showSheet('#playSheet');};
+$$('[data-toy]').forEach(b=>b.onclick=()=>{const n=b.dataset.toy,on=!toys[n];setToy(n,on);renderPlay();if(on){sPlop();toast(n==='ball'?'Flick the ball! Playful fish love to nudge it ⚽':n==='hoop'?'Drag the hoop anywhere. Watch the fish swim through it 🎯':'Drag the mirror along the sand. Someone is about to show off ✨');}});
+$('#bLights2').onclick=()=>{setNight(!S.night);renderPlay();};
+// hat picker
+let pickHat=null;
+function openHatPicker(it){pickHat=it;const g=$('#hatGrid');g.innerHTML='';fishes.forEach(f=>{const d=document.createElement('div');d.className='fcell'+(f.hat===it.id?' on':'');d.innerHTML='<img alt=""><div></div>';d.querySelector('img').src=f.tex;d.querySelector('div').textContent=f.name+(f.hat===it.id?' 🎩':'');
+  d.onclick=()=>{f.hat=f.hat===it.id?null:it.id;save();closeSheet();if(f.hat){f.flash=0.8;chat(f,'happy',true);sChime();toast(`${f.name} looks fabulous 🎩`);}};g.appendChild(d);});
+ $('#hatPickEmpty').style.display=fishes.length?'none':'block';showSheet('#hatPick');}
+
+/* =========================== PHOTO MODE =========================== */
+const photo={on:false,freeze:false,zoom:1,focus:null};let dlP=null;
+function getDownloads(){if(!dlP){try{dlP=(window.claude&&window.claude.use)?window.claude.use('downloads').catch(()=>null):Promise.resolve(null);}catch(e){dlP=Promise.resolve(null);}}return dlP;}
+function enterPhoto(){closeSheet();setMode('none');photo.on=true;photo.freeze=false;photo.zoom=1;photo.focus=null;$('#pZoom').value=100;$('#pFreeze').classList.remove('on');document.body.classList.add('photo');hideHint();}
+function exitPhoto(){photo.on=false;photo.freeze=false;document.body.classList.remove('photo');}
+$('#bPhotoMode').onclick=enterPhoto;$('#pClose').onclick=exitPhoto;
+$('#pZoom').oninput=e=>photo.zoom=+e.target.value/100;
+$('#pFreeze').onclick=e=>{photo.freeze=!photo.freeze;e.currentTarget.classList.toggle('on',photo.freeze);};
+let lastShot=null;
+$('#pShutter').onclick=()=>{render(time);const pad=Math.round(cv.width*0.035),cap=Math.round(cv.width*0.09);const c=document.createElement('canvas');c.width=cv.width+pad*2;c.height=cv.height+pad*2+cap;const x=c.getContext('2d');
+ x.fillStyle='#fff8ec';x.fillRect(0,0,c.width,c.height);x.drawImage(cv,pad,pad);x.fillStyle='#1d2742';x.font=`700 ${Math.round(cap*0.38)}px 'Baloo 2',sans-serif`;x.textBaseline='middle';
+ const names=photo.focus?photo.focus.name:fishes.length?`${fishes.length} fish`:'My tank';x.fillText(`Doodle Tank · ${names}`,pad,cv.height+pad+cap*0.55);x.textAlign='right';x.fillStyle='#8a8170';x.font=`600 ${Math.round(cap*0.3)}px 'Baloo 2',sans-serif`;x.fillText(new Date().toLocaleDateString(),c.width-pad,cv.height+pad+cap*0.55);
+ const fl=$('#flash');fl.classList.remove('on');void fl.offsetWidth;fl.classList.add('on');sShutter();lastShot=c;$('#prImg').src=c.toDataURL('image/png');
+ getDownloads().then(d=>{$('#prSave').style.display=d?'block':'none';$('#prNote').textContent=d?'':'Press and hold the picture to save it to your phone.';});
+ setTimeout(()=>showSheet('#photoRes'),250);};
+$('#prSave').onclick=async()=>{const d=await getDownloads();if(!d||!lastShot)return;lastShot.toBlob(async b=>{try{const st=new Date(),pad=n=>String(n).padStart(2,'0');await d.save({filename:`doodle-tank-${st.getFullYear()}${pad(st.getMonth()+1)}${pad(st.getDate())}-${pad(st.getHours())}${pad(st.getMinutes())}.png`,data:b});toast('Photo saved 📸');}
+ catch(err){if(err&&err.code==='declined')return;toast('Saving isn\'t available here. Press and hold the picture instead');$('#prNote').textContent='Press and hold the picture to save it to your phone.';}},'image/png');};
+$('#prClose').onclick=()=>{closeSheet();};
+
+/* =========================== CLEAN VIEW / FULL SCREEN =========================== */
+function setClean(on){document.body.classList.toggle('clean',on);if(on){setMode('none');hideHint();closeSheet();}}
+$('#bHide').onclick=()=>{setClean(true);sClick();};$('#bShow').onclick=()=>{setClean(false);sClick();};
+const fsEl=document.documentElement,fsReq=fsEl.requestFullscreen||fsEl.webkitRequestFullscreen,fsExit=document.exitFullscreen||document.webkitExitFullscreen;
+const fsOn=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
+if(fsReq&&(document.fullscreenEnabled||document.webkitFullscreenEnabled))$('#bFull').style.display='';
+function syncFs(){$('#bFull').innerHTML=fsOn()?`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>`:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>`;$('#bFull').title=fsOn()?'Exit full screen':'Full screen';}
+document.addEventListener('fullscreenchange',syncFs);document.addEventListener('webkitfullscreenchange',syncFs);
+$('#bFull').onclick=async()=>{try{if(fsOn())await fsExit.call(document);else await fsReq.call(fsEl,{navigationUI:'hide'});}catch(e){$('#bFull').style.display='none';toast("Full screen isn't allowed here. Try opening the tank in its own browser tab");}};
+
+/* =========================== EDITOR =========================== */
+const edCv=$('#edCanvas'),ed=edCv.getContext('2d',{willReadFrequently:true}),gd=$('#guideCanvas').getContext('2d');const EW=1000,EH=640;
+const E={tool:'brush',color:'#1d2742',size:14,mirror:false,undo:[],kind:'swim',wig:1,fillIn:true,fillHex:'#fff6e0',tpl:null,photo:null,what:'fish',pers:'random',glow:false};
+const COLORS=['#1d2742','#ffffff','#e63946','#ff7b54','#ffb703','#ffe66d','#8ac926','#2a9d8f','#4cc9f0','#3a86ff','#5e60ce','#c77dff','#ff70a6','#8d5524','#f1c27d','#adb5bd'];
+const swd=$('#swatches');COLORS.forEach((c,i)=>{const b=document.createElement('button');b.className='sw'+(i===0?' on':'');b.style.background=c;b.onclick=()=>{E.color=c;$$('.sw').forEach(s=>s.classList.remove('on'));b.classList.add('on');if(E.tool==='eraser')setTool('brush');};swd.appendChild(b);});
+$('#customColor').oninput=e=>{E.color=e.target.value;$$('.sw').forEach(s=>s.classList.remove('on'));if(E.tool==='eraser')setTool('brush');};
+function setTool(t){E.tool=t;$$('#toolRow [data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));}
+$$('#toolRow [data-tool]').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
+$('#tMirror').onclick=e=>{E.mirror=!E.mirror;e.currentTarget.classList.toggle('on',E.mirror);$('#midLine').style.display=E.mirror?'block':'none';if(E.mirror)toast('Mirror on: the top and bottom halves match');};
+function pushUndo(){E.undo.push(ed.getImageData(0,0,EW,EH));if(E.undo.length>25)E.undo.shift();}
+$('#tUndo').onclick=()=>{const d=E.undo.pop();if(d)ed.putImageData(d,0,0);};
+$('#tClear').onclick=()=>{pushUndo();ed.clearRect(0,0,EW,EH);};
+$('#tFlip').onclick=()=>{pushUndo();const c=document.createElement('canvas');c.width=EW;c.height=EH;c.getContext('2d').drawImage(edCv,0,0);ed.clearRect(0,0,EW,EH);ed.save();ed.translate(EW,0);ed.scale(-1,1);ed.drawImage(c,0,0);ed.restore();};
+$('#bSize').oninput=e=>E.size=+e.target.value;
+$$('#segKind button').forEach(b=>b.onclick=()=>{E.kind=b.dataset.v;$$('#segKind button').forEach(x=>x.classList.toggle('on',x===b));});
+$$('#segWig button').forEach(b=>b.onclick=()=>{E.wig=+b.dataset.v;$$('#segWig button').forEach(x=>x.classList.toggle('on',x===b));});
+$$('#segPers button').forEach(b=>b.onclick=()=>{E.pers=b.dataset.v;$$('#segPers button').forEach(x=>x.classList.toggle('on',x===b));});
+$('#tGlow').onclick=e=>{E.glow=!E.glow;e.currentTarget.classList.toggle('on',E.glow);};
+$('#tFillIn').onclick=e=>{E.fillIn=!E.fillIn;e.currentTarget.classList.toggle('on',E.fillIn);};
+const WHAT={fish:{l:'◀ HEAD',r:'TAIL ▶',b:'',btn:'Release into the tank 🐟',ph:'Name your fish…'},food:{l:'',r:'',b:'',btn:'Add to the food tin 🍩',ph:'Name your food…'},hat:{l:'',r:'',b:'▼ sits on the head',btn:'Make the hat 🎩',ph:'Name your hat…'},castle:{l:'',r:'',b:'▼ GROUND ▼',btn:'Build it in the tank 🏰',ph:'Name your castle…'}};
+function setWhat(w){E.what=w;$$('#segWhat button').forEach(x=>x.classList.toggle('on',x.dataset.v===w));const c=WHAT[w];$('#lblHead').textContent=c.l;$('#lblTail').textContent=c.r;$('#lblBottom').textContent=c.b;$('#release').textContent=c.btn;
+ $('#fishOpts').style.display=w==='fish'?'block':'none';$('#tplCard').style.display=w==='fish'?'block':'none';$('#fishName').style.visibility=w==='fish'?'visible':'hidden';}
+$$('#segWhat button').forEach(b=>b.onclick=()=>setWhat(b.dataset.v));
+const edPos=e=>{const r=edCv.getBoundingClientRect();return[(e.clientX-r.left)/r.width*EW,(e.clientY-r.top)/r.height*EH];};
+let stroke=null;
+function strokeSeg(a,c,b){const lw=E.size;ed.lineCap='round';ed.lineJoin='round';ed.lineWidth=lw;ed.strokeStyle=E.color;ed.globalCompositeOperation=E.tool==='eraser'?'destination-out':'source-over';
+ const go=f=>{ed.beginPath();ed.moveTo(a[0],f(a[1]));ed.quadraticCurveTo(c[0],f(c[1]),b[0],f(b[1]));ed.stroke();};go(y=>y);if(E.mirror)go(y=>EH-y);ed.globalCompositeOperation='source-over';}
+function stampEye(p){const r=Math.max(14,E.size*1.3);const one=(x,y)=>{ed.fillStyle='#fff';ed.strokeStyle='#1d2742';ed.lineWidth=Math.max(3,r*0.16);ed.beginPath();ed.arc(x,y,r,0,7);ed.fill();ed.stroke();ed.fillStyle='#1d2742';ed.beginPath();ed.arc(x-r*0.25,y+r*0.05,r*0.5,0,7);ed.fill();ed.fillStyle='#fff';ed.beginPath();ed.arc(x-r*0.4,y-r*0.15,r*0.16,0,7);ed.fill();};one(p[0],p[1]);if(E.mirror&&Math.abs(p[1]-EH/2)>r)one(p[0],EH-p[1]);}
+function floodFill(p){const x0=p[0]|0,y0=p[1]|0;const id=ed.getImageData(0,0,EW,EH),d=id.data,s=(y0*EW+x0)*4,sr0=d[s],sg=d[s+1],sb=d[s+2],sa=d[s+3];const[fr,fg,fb]=hex2rgb(E.color).map(v=>v*255);
+ if(Math.abs(sr0-fr)<4&&Math.abs(sg-fg)<4&&Math.abs(sb-fb)<4&&sa>250)return;const tol=60;const same=i=>{const a=d[i*4+3];if(sa<30)return a<110;return Math.abs(d[i*4]-sr0)+Math.abs(d[i*4+1]-sg)+Math.abs(d[i*4+2]-sb)+Math.abs(a-sa)<tol;};
+ const reg=new Uint8Array(EW*EH),q=new Int32Array(EW*EH);let qh=0,qt=0;const st=y0*EW+x0;reg[st]=1;q[qt++]=st;
+ while(qh<qt){const i=q[qh++],x=i%EW,y=(i/EW)|0;const nb=[x>0?i-1:-1,x<EW-1?i+1:-1,y>0?i-EW:-1,y<EH-1?i+EW:-1];for(const j of nb)if(j>=0&&!reg[j]&&same(j)){reg[j]=1;q[qt++]=j;}}
+ if(sa<30&&qt>EW*EH*0.6){toast('That area is open to the edge. Close your outline first, or fill inside a shape');return;}
+ const dil=dilate(reg,EW,EH,2);pushUndo();for(let i=0;i<EW*EH;i++){if(!dil[i])continue;if(reg[i]){d[i*4]=fr;d[i*4+1]=fg;d[i*4+2]=fb;d[i*4+3]=255;}else{const a=d[i*4+3]/255;d[i*4]=d[i*4]*a+fr*(1-a);d[i*4+1]=d[i*4+1]*a+fg*(1-a);d[i*4+2]=d[i*4+2]*a+fb*(1-a);d[i*4+3]=255;}}ed.putImageData(id,0,0);}
+edCv.addEventListener('pointerdown',e=>{e.preventDefault();edCv.setPointerCapture(e.pointerId);const p=edPos(e);
+ if(E.tool==='fill'){floodFill(p);return;}if(E.tool==='eye'){pushUndo();stampEye(p);return;}
+ pushUndo();stroke={last:p,mid:p};strokeSeg(p,p,[p[0]+0.01,p[1]]);});
+edCv.addEventListener('pointermove',e=>{if(!stroke)return;const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];for(const ev of(evs.length?evs:[e])){const p=edPos(ev);const mid=[(stroke.last[0]+p[0])/2,(stroke.last[1]+p[1])/2];strokeSeg(stroke.mid,stroke.last,mid);stroke.last=p;stroke.mid=mid;}});
+const endStroke=()=>{if(stroke){strokeSeg(stroke.mid,stroke.last,stroke.last);stroke=null;}};edCv.addEventListener('pointerup',endStroke);edCv.addEventListener('pointercancel',endStroke);
+
+/* templates (normalized 0..1) */
+const TPL={
+ classic:c=>{c.ellipse(0.43,0.5,0.29,0.21,0,0,Math.PI*2);c.moveTo(0.68,0.5);c.quadraticCurveTo(0.8,0.36,0.93,0.26);c.quadraticCurveTo(0.86,0.5,0.93,0.74);c.quadraticCurveTo(0.8,0.64,0.68,0.5);},
+ puffer:c=>{c.arc(0.45,0.5,0.25,0,Math.PI*2);for(let i=0;i<12;i++){const a=i/12*Math.PI*2;if(Math.cos(a)<-0.85)continue;const r=0.25,x=0.45+Math.cos(a)*r*0.64,y=0.5+Math.sin(a)*r;c.moveTo(x+Math.cos(a+0.25)*0.012,y+Math.sin(a+0.25)*0.03);c.lineTo(0.45+Math.cos(a)*(r+0.06)*0.64,0.5+Math.sin(a)*(r+0.09));c.lineTo(x+Math.cos(a-0.25)*0.012,y+Math.sin(a-0.25)*0.03);}c.moveTo(0.6,0.5);c.lineTo(0.75,0.38);c.lineTo(0.75,0.62);c.closePath();},
+ eel:c=>{c.moveTo(0.05,0.5);for(let x=0.05;x<=0.95;x+=0.02)c.lineTo(x,0.42+Math.sin(x*9)*0.06-(x<0.12?(0.12-x)*0.8:0)+(x>0.85?(x-0.85)*0.6:0));for(let x=0.95;x>=0.05;x-=0.02)c.lineTo(x,0.58+Math.sin(x*9)*0.06+(x<0.12?(0.12-x)*0.8:0)-(x>0.85?(x-0.85)*0.6:0));c.closePath();},
+ angel:c=>{c.moveTo(0.15,0.5);c.quadraticCurveTo(0.3,0.25,0.45,0.08);c.quadraticCurveTo(0.55,0.3,0.68,0.42);c.lineTo(0.88,0.3);c.lineTo(0.84,0.5);c.lineTo(0.88,0.7);c.lineTo(0.68,0.58);c.quadraticCurveTo(0.55,0.7,0.45,0.92);c.quadraticCurveTo(0.3,0.75,0.15,0.5);},
+ shark:c=>{c.moveTo(0.06,0.52);c.quadraticCurveTo(0.12,0.38,0.32,0.38);c.lineTo(0.42,0.2);c.lineTo(0.5,0.39);c.quadraticCurveTo(0.68,0.42,0.78,0.47);c.lineTo(0.94,0.24);c.quadraticCurveTo(0.9,0.48,0.95,0.74);c.lineTo(0.78,0.55);c.quadraticCurveTo(0.6,0.62,0.45,0.62);c.lineTo(0.4,0.74);c.lineTo(0.33,0.62);c.quadraticCurveTo(0.12,0.64,0.06,0.52);},
+ betta:c=>{c.moveTo(0.08,0.5);c.bezierCurveTo(0.12,0.36,0.3,0.32,0.42,0.36);c.bezierCurveTo(0.5,0.12,0.7,0.06,0.78,0.18);c.bezierCurveTo(0.95,0.2,0.98,0.45,0.94,0.5);c.bezierCurveTo(0.98,0.6,0.95,0.85,0.78,0.86);c.bezierCurveTo(0.68,0.95,0.5,0.88,0.42,0.64);c.bezierCurveTo(0.3,0.68,0.12,0.64,0.08,0.5);},
+ tang:c=>{c.moveTo(0.06,0.48);c.quadraticCurveTo(0.14,0.4,0.2,0.36);c.bezierCurveTo(0.3,0.08,0.62,0.1,0.7,0.4);c.lineTo(0.92,0.18);c.quadraticCurveTo(0.85,0.5,0.92,0.82);c.lineTo(0.7,0.6);c.bezierCurveTo(0.62,0.9,0.3,0.92,0.2,0.62);c.quadraticCurveTo(0.12,0.56,0.06,0.52);c.closePath();},
+ whale:c=>{c.moveTo(0.06,0.55);c.bezierCurveTo(0.06,0.2,0.5,0.18,0.66,0.4);c.quadraticCurveTo(0.74,0.48,0.8,0.42);c.lineTo(0.95,0.22);c.quadraticCurveTo(0.9,0.36,0.96,0.5);c.quadraticCurveTo(0.86,0.5,0.8,0.56);c.bezierCurveTo(0.7,0.72,0.5,0.82,0.3,0.8);c.bezierCurveTo(0.14,0.78,0.06,0.7,0.06,0.55);},
+ blob:c=>{c.moveTo(0.12,0.5);c.bezierCurveTo(0.12,0.15,0.7,0.15,0.72,0.5);c.bezierCurveTo(0.7,0.85,0.12,0.85,0.12,0.5);c.moveTo(0.7,0.5);c.lineTo(0.86,0.36);c.quadraticCurveTo(0.82,0.5,0.86,0.64);c.closePath();}};
+function tplPath(ctx,name,w,h){ctx.save();ctx.scale(w,h);ctx.beginPath();TPL[name](ctx);ctx.restore();}
+function drawGuide(){gd.clearRect(0,0,EW,EH);if(!E.tpl)return;gd.save();tplPath(gd,E.tpl,EW,EH);gd.fillStyle='rgba(120,170,230,.10)';gd.fill();gd.setLineDash([16,12]);gd.lineWidth=5;gd.strokeStyle='rgba(90,140,210,.55)';gd.stroke();gd.restore();}
+Object.keys(TPL).forEach(n=>{const b=document.createElement('button');b.className='tpl';const c=document.createElement('canvas');c.width=148;c.height=104;const x=c.getContext('2d');tplPath(x,n,148,104);x.fillStyle='#ffe2b8';x.fill();x.lineWidth=3;x.strokeStyle='#1d2742';x.stroke();b.appendChild(c);
+ b.onclick=()=>{E.tpl=E.tpl===n?null:n;$$('#tpls .tpl').forEach(t=>t.classList.toggle('on',t===b&&E.tpl===n));$('#tplRow').style.display=E.tpl?'flex':'none';drawGuide();};$('#tpls').appendChild(b);});
+$('#bStamp').onclick=()=>{if(!E.tpl)return;pushUndo();ed.save();tplPath(ed,E.tpl,EW,EH);ed.fillStyle=E.color==='#1d2742'?'#ff7b54':E.color;ed.fill();ed.lineWidth=9;ed.lineJoin='round';ed.strokeStyle='#1d2742';ed.stroke();ed.restore();toast('Now decorate it: add stripes, spots and an 👁️ eye!');};
+
+/* photo of drawing */
+/* ---- photo → cut-out (auto or traced by hand) ---- */
+function photoCanvas(img,rot){const iw=img.naturalWidth||img.width,ih=img.naturalHeight||img.height,MAX=1400,sc=Math.min(1,MAX/Math.max(iw,ih));const w=Math.round(iw*sc),h=Math.round(ih*sc);
+ const c=document.createElement('canvas');const r=((rot%4)+4)%4;c.width=r%2?h:w;c.height=r%2?w:h;const x=c.getContext('2d');x.translate(c.width/2,c.height/2);x.rotate(r*Math.PI/2);x.drawImage(img,-w/2,-h/2,w,h);return c;}
+function loadPhoto(file){if(!file)return;const url=URL.createObjectURL(file);const img=new Image();img.onload=()=>{E.photo=img;E.rot=0;E.src=photoCanvas(img,0);E.poly=null;openTrace();};img.onerror=()=>toast("Couldn't open that picture");img.src=url;}
+function placeCut(cut){pushUndo();ed.clearRect(0,0,EW,EH);const sc=Math.min(EW*0.9/cut.width,EH*0.88/cut.height);const w=cut.width*sc,h=cut.height*sc;ed.drawImage(cut,(EW-w)/2,(EH-h)/2,w,h);$('#photoTune').style.display='block';}
+function runPhoto(){const src=E.src;if(!src)return;E.lastCut='auto';$('#busy').style.display='flex';setTimeout(()=>{let cut=null;try{cut=processPhoto(src,+$('#sens').value);}catch(err){console.error(err);}
+ $('#busy').style.display='none';$('#photoTune').style.display='block';
+ if(!cut){toast("I couldn't find the drawing. Try ✂️ Trace again and draw around it");return;}
+ placeCut(cut);toast('Got it! Touch it up if you like, then add it 🐟');},40);}
+function redoCut(){if(!E.src)return;if(E.lastCut==='trace'&&E.poly){$('#busy').style.display='flex';setTimeout(()=>{const cut=traceCut(E.src,E.poly,+$('#sens').value,TR.paper);$('#busy').style.display='none';if(cut)placeCut(cut);},40);}else runPhoto();}
+
+// hand-traced cut-out: keep what's inside the loop; optionally clear the paper between the loop and the drawing
+function traceCut(src,poly,sens,removePaper){
+ const sw=src.width,sh=src.height,sc=Math.min(1,900/Math.max(sw,sh)),w=Math.max(16,Math.round(sw*sc)),h=Math.max(16,Math.round(sh*sc)),N=w*h;
+ const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(src,0,0,w,h);
+ const id=ctx.getImageData(0,0,w,h),p=id.data;
+ const mc=document.createElement('canvas');mc.width=w;mc.height=h;const mx=mc.getContext('2d');mx.fillStyle='#fff';mx.beginPath();poly.forEach((q,i)=>i?mx.lineTo(q[0]*w,q[1]*h):mx.moveTo(q[0]*w,q[1]*h));mx.closePath();mx.fill();
+ const md=mx.getImageData(0,0,w,h).data,pm=new Uint8Array(N);let parea=0;for(let i=0;i<N;i++)if(md[i*4+3]>127){pm[i]=1;parea++;}
+ if(parea<200)return null;
+ // paper brightness model (same idea as the automatic cut-out)
+ const L=new Float32Array(N);for(let i=0;i<N;i++)L[i]=0.299*p[i*4]+0.587*p[i*4+1]+0.114*p[i*4+2];
+ const B=18,bw=Math.ceil(w/B),bh=Math.ceil(h/B),blk=new Float32Array(bw*bh);
+ for(let by=0;by<bh;by++)for(let bx=0;bx<bw;bx++){const arr=[];for(let y=by*B;y<Math.min(h,by*B+B);y+=2)for(let x=bx*B;x<Math.min(w,bx*B+B);x+=2)arr.push(L[y*w+x]);arr.sort((a,b)=>a-b);blk[by*bw+bx]=arr[Math.floor(arr.length*0.9)]||255;}
+ const mxb=new Float32Array(bw*bh),bl=new Float32Array(bw*bh);
+ for(let y=0;y<bh;y++)for(let x=0;x<bw;x++){let v=0;for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const xx=clamp(x+dx,0,bw-1),yy=clamp(y+dy,0,bh-1);v=Math.max(v,blk[yy*bw+xx]);}mxb[y*bw+x]=v;}
+ for(let y=0;y<bh;y++)for(let x=0;x<bw;x++){let v=0,n=0;for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=bw||yy>=bh)continue;v+=mxb[yy*bw+xx];n++;}bl[y*bw+x]=v/n;}
+ const bg=new Float32Array(N);for(let y=0;y<h;y++){const fy=clamp(y/B-0.5,0,bh-1),y0=Math.floor(fy),y1=Math.min(bh-1,y0+1),ty=fy-y0;for(let x=0;x<w;x++){const fx=clamp(x/B-0.5,0,bw-1),x0=Math.floor(fx),x1=Math.min(bw-1,x0+1),tx=fx-x0;
+  bg[y*w+x]=Math.max(30,lerp(lerp(bl[y0*bw+x0],bl[y0*bw+x1],tx),lerp(bl[y1*bw+x0],bl[y1*bw+x1],tx),ty));}}
+ let shape=pm;
+ if(removePaper){const thr=0.3-sens*0.022,cthr=0.34-sens*0.022,ink=new Uint8Array(N);
+  for(let i=0;i<N;i++){if(!pm[i])continue;const r=p[i*4],g=p[i*4+1],b=p[i*4+2],ratio=L[i]/bg[i],chroma=(Math.max(r,g,b)-Math.min(r,g,b))/bg[i];if(ratio<1-thr||(chroma>cthr&&ratio<1.02))ink[i]=1;}
+  const inkD=dilate(ink,w,h,3);
+  // flood the paper in from the traced line; it stops at the drawing's outline, so paper inside the fish stays
+  const reach=new Uint8Array(N),q=new Int32Array(N);let qh=0,qt=0;
+  for(let i=0;i<N;i++)if(!pm[i]){reach[i]=1;q[qt++]=i;}
+  for(let x=0;x<w;x++)for(const i of[x,(h-1)*w+x])if(!reach[i]&&!inkD[i]){reach[i]=1;q[qt++]=i;}
+  for(let y=0;y<h;y++)for(const i of[y*w,y*w+w-1])if(!reach[i]&&!inkD[i]){reach[i]=1;q[qt++]=i;}
+  while(qh<qt){const i=q[qh++],x=i%w,y=(i/w)|0;for(const j of[x>0?i-1:-1,x<w-1?i+1:-1,y>0?i-w:-1,y<h-1?i+w:-1])if(j>=0&&!reach[j]&&pm[j]&&!inkD[j]){reach[j]=1;q[qt++]=j;}}
+  let fish=new Uint8Array(N),fa=0;for(let i=0;i<N;i++)if(pm[i]&&!reach[i]){fish[i]=1;fa++;}
+  fish=erode(fish,w,h,2);
+  const{lab,comps}=components(fish,w,h);if(comps.length){comps.sort((a,b)=>b.area-a.area);const keep=new Set(comps.filter(c=>c.area>=comps[0].area*0.06).map(c=>c.id));for(let i=0;i<N;i++)fish[i]=keep.has(lab[i])?1:0;fa=comps.filter(c=>keep.has(c.id)).reduce((s,c)=>s+c.area,0);}
+  if(fa>parea*0.04)shape=fish;else toast("Couldn't separate the paper, so I kept everything inside your line");}
+ const out=ctx.createImageData(w,h),o=out.data;let x0=w,y0=h,x1=-1,y1=-1;
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;if(!shape[i])continue;const k=255/bg[i]*1.04;
+  let r=Math.min(255,p[i*4]*k),g=Math.min(255,p[i*4+1]*k),b=Math.min(255,p[i*4+2]*k);const l=(r+g+b)/3;
+  r=clamp(l+(r-l)*1.35,0,255);g=clamp(l+(g-l)*1.35,0,255);b=clamp(l+(b-l)*1.35,0,255);const cf=v=>255*Math.pow(v/255,1.12);o[i*4]=cf(r);o[i*4+1]=cf(g);o[i*4+2]=cf(b);
+  const edge=(x>0&&!shape[i-1])||(x<w-1&&!shape[i+1])||(y>0&&!shape[i-w])||(y<h-1&&!shape[i+w]);o[i*4+3]=edge?170:255;
+  if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
+ if(x1<0||(x1-x0)<8||(y1-y0)<6)return null;
+ const t2=document.createElement('canvas');t2.width=w;t2.height=h;t2.getContext('2d').putImageData(out,0,0);
+ const cc=document.createElement('canvas');cc.width=x1-x0+1;cc.height=y1-y0+1;cc.getContext('2d').drawImage(t2,-x0,-y0);return cc;}
+
+// trace screen
+const TR={pts:[],drawing:false,closed:false,paper:true,fit:null};
+const trCv=$('#traceCv'),trX=trCv.getContext('2d');
+function openTrace(){TR.pts=E.poly?E.poly.slice():[];TR.closed=!!E.poly;$('#traceUI').classList.add('on');$('#trUse').disabled=!TR.closed;$('#traceTip').textContent=TR.closed?'Happy with it? Tap Use it. Or tap Redo':'Draw a loop around the fish with your finger';requestAnimationFrame(drawTrace);}
+function closeTrace(){$('#traceUI').classList.remove('on');}
+function drawTrace(){const r=$('#traceWrap').getBoundingClientRect(),dpr=Math.min(2,devicePixelRatio||1);trCv.width=Math.max(1,Math.round(r.width*dpr));trCv.height=Math.max(1,Math.round(r.height*dpr));
+ const src=E.src;if(!src)return;const sc=Math.min(trCv.width/src.width,trCv.height/src.height),w=src.width*sc,h=src.height*sc,ox=(trCv.width-w)/2,oy=(trCv.height-h)/2;TR.fit={sc,ox,oy,w,h,dpr};
+ trX.clearRect(0,0,trCv.width,trCv.height);trX.drawImage(src,ox,oy,w,h);
+ if(TR.pts.length>1){const P=q=>[ox+q[0]*w,oy+q[1]*h];trX.save();
+  if(TR.closed){trX.beginPath();trX.rect(0,0,trCv.width,trCv.height);TR.pts.forEach((q,i)=>{const[x,y]=P(q);i?trX.lineTo(x,y):trX.moveTo(x,y);});trX.closePath();trX.fillStyle='rgba(8,12,20,.62)';trX.fill('evenodd');}
+  trX.beginPath();TR.pts.forEach((q,i)=>{const[x,y]=P(q);i?trX.lineTo(x,y):trX.moveTo(x,y);});if(TR.closed)trX.closePath();trX.lineJoin='round';trX.lineCap='round';
+  trX.lineWidth=6*dpr;trX.strokeStyle='rgba(0,0,0,.6)';trX.stroke();trX.lineWidth=3*dpr;trX.setLineDash([10*dpr,7*dpr]);trX.strokeStyle='#fff';trX.stroke();trX.restore();}}
+const trPos=e=>{const r=trCv.getBoundingClientRect(),f=TR.fit;const x=((e.clientX-r.left)*f.dpr-f.ox)/f.w,y=((e.clientY-r.top)*f.dpr-f.oy)/f.h;return[clamp(x,0,1),clamp(y,0,1)];};
+trCv.addEventListener('pointerdown',e=>{if(!TR.fit)return;e.preventDefault();trCv.setPointerCapture(e.pointerId);TR.pts=[trPos(e)];TR.drawing=true;TR.closed=false;$('#trUse').disabled=true;drawTrace();});
+trCv.addEventListener('pointermove',e=>{if(!TR.drawing)return;const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];for(const ev of(evs.length?evs:[e])){const q=trPos(ev),l=TR.pts[TR.pts.length-1];if(Math.hypot((q[0]-l[0])*TR.fit.w,(q[1]-l[1])*TR.fit.h)>3*TR.fit.dpr)TR.pts.push(q);}drawTrace();});
+function trEnd(){if(!TR.drawing)return;TR.drawing=false;let a=0;for(let i=0;i<TR.pts.length;i++){const p=TR.pts[i],q=TR.pts[(i+1)%TR.pts.length];a+=(p[0]*q[1]-q[0]*p[1])*TR.fit.w*TR.fit.h;}
+ if(TR.pts.length<8||Math.abs(a)/2<900*TR.fit.dpr*TR.fit.dpr){TR.pts=[];$('#traceTip').textContent='Draw a bigger loop all the way around the fish';drawTrace();return;}
+ TR.closed=true;$('#trUse').disabled=false;$('#traceTip').textContent='Happy with it? Tap Use it. Or draw again to redo';drawTrace();}
+trCv.addEventListener('pointerup',trEnd);trCv.addEventListener('pointercancel',trEnd);
+addEventListener('resize',()=>{if($('#traceUI').classList.contains('on'))drawTrace();});
+$('#trClose').onclick=closeTrace;
+$('#trRedo').onclick=()=>{TR.pts=[];TR.closed=false;$('#trUse').disabled=true;$('#traceTip').textContent='Draw a loop around the fish with your finger';drawTrace();};
+$('#trRotate').onclick=()=>{E.rot=(E.rot||0)+1;E.src=photoCanvas(E.photo,E.rot);TR.pts=[];TR.closed=false;E.poly=null;$('#trUse').disabled=true;drawTrace();};
+$('#trPaper').onclick=e=>{TR.paper=!TR.paper;e.currentTarget.classList.toggle('on',TR.paper);};
+$('#trAuto').onclick=()=>{closeTrace();runPhoto();};
+$('#trUse').onclick=()=>{if(!TR.closed)return;E.poly=TR.pts.slice();E.lastCut='trace';$('#traceBusy').style.display='flex';
+ setTimeout(()=>{let cut=null;try{cut=traceCut(E.src,E.poly,+$('#sens').value,TR.paper);}catch(err){console.error(err);}$('#traceBusy').style.display='none';
+  if(!cut){toast('Hmm, nothing was inside that loop. Try again');return;}closeTrace();placeCut(cut);toast('Cut out! Touch it up if you like, then add it 🐟');},40);};
+$('#bRetrace').onclick=()=>{if(E.src)openTrace();else toast('Take or pick a photo first 📷');};
+$('#bAutoAgain').onclick=()=>{if(E.src)runPhoto();};
+$('#bPhoto').onclick=()=>$('#fileCam').click();$('#bGallery').onclick=()=>$('#fileGal').click();
+$('#fileCam').onchange=e=>{loadPhoto(e.target.files[0]);e.target.value='';};$('#fileGal').onchange=e=>{loadPhoto(e.target.files[0]);e.target.value='';};
+$('#sens').onchange=redoCut;$('#bReproc').onclick=redoCut;
+
+const NAMES=['Scribbles','Doodle','Inky','Bubbles','Squiggle','Sketchy','Pebble','Noodle','Sprinkle','Captain Crayon','Marker','Pip','Wobble','Biscuit','Sardine','Penny'];
+function openEditor(){$('#fishName').value='';$('#fishName').placeholder=`Name your fish (e.g. ${NAMES[(Math.random()*NAMES.length)|0]})`;$('#photoTune').style.display='none';setMode('none');setWhat(E.what);showSheet('#editor');}
+$('#bDraw').onclick=openEditor;$('#edClose').onclick=closeSheet;$('#emptyNote').onclick=openEditor;
+function resetEditor(){ed.clearRect(0,0,EW,EH);E.undo=[];E.photo=null;E.tpl=null;drawGuide();$$('#tpls .tpl').forEach(t=>t.classList.remove('on'));$('#tplRow').style.display='none';}
+$('#release').onclick=()=>{const out=finalizeDrawing(edCv,E.fillIn,E.fillHex);if(!out){toast('Draw something first! ✏️');return;}
+ if(E.what==='fish'){if(fishes.length>=40){toast('The tank is full (40 fish). Release one to make room');return;}
+  const name=$('#fishName').value.trim()||$('#fishName').placeholder.replace(/^.*e\.g\. /,'').replace(')','');
+  const pers=E.pers==='random'?['bold','shy','playful','normal'][(Math.random()*4)|0]:E.pers;
+  const data=newFishData({name,kind:E.kind,wiggle:E.wig,size:+$('#fSize').value/100,hunger:0.6,pers,glow:E.glow});
+  if(view==='group'){data.tex=out.toDataURL('image/png');data.trust=PERS[pers].trust;S.fish=S.fish||[];S.fish.push(data);save();resetEditor();closeSheet();sendData(data);return;}
+  const f=spawnFish(data,out.toDataURL('image/png'),true);
+  resetEditor();closeSheet();setTimeout(sPlop,450);toast(`Welcome to the tank, ${name}! ${PERS[pers].n.split(' ')[0]} They're ${PERS[pers].n.split(' ').slice(1).join(' ').toLowerCase()}. Tap 🍤 Feed to help them grow`,4000);save();return;}
+ const it={id:'i'+(fid++),type:E.what,tex:out.toDataURL('image/png')};
+ if(E.what==='castle'){if(S.items.filter(i=>i.type==='castle').length>=3){toast('There are already 3 castles. Remove one in 🎈 Play first');return;}
+  const z=rand(-2.6,-1.3),xl=xLim(z,1.2);let x=rand(-xl,xl);for(let k=0;k<12;k++){if(!castles().some(c=>Math.abs(c.x-x)<c.w))break;x=rand(-xl,xl);}it.x=x;it.z=z;}
+ S.items.push(it);loadItemTex(it);resetEditor();closeSheet();sPlop();
+ if(E.what==='food'){S.food=it.id;toast('Yum! Your food is in the tin. Tap 🍤 Feed to try it');}
+ else if(E.what==='castle'){toast('Castle built 🏰 Shy and sleepy fish will hide behind it');setTimeout(()=>burst([it.x,T.floorY+0.4,it.z],18,0.8),300);}
+ else if(E.what==='hat'){save();if(fishes.length)setTimeout(()=>openHatPicker(it),300);else toast('Hat saved. Give it to a fish once you have one 🎩');}
+ save();};
+
+/* =========================== EMPTY TANK NOTE =========================== */
+function updateEmpty(){const n=$('#emptyNote');if(!n)return;const g=typeof view!=='undefined'&&view==='group';n.querySelector('b').textContent=g?'No fish in the group tank yet':'Draw your first fish';n.querySelector('span').textContent=g?'Open 🏠 Mine, tap a fish, then 👥 Send to group tank. Or tap here to draw one':'Tap here, or take a photo of one drawn on paper';n.querySelector('.big').textContent=g?'👥🐟':'🐟✏️';n.classList.toggle('on',fishes.length===0&&!photo.on);}
+
+/* =========================== GROUP TANK =========================== */
+// Two ways to share a group tank:
+//  - "claude": the page's own storage when it is opened inside Claude while signed in
+//  - "server": your own Doodle Tank server (see server/server.js in the GitHub repo)
+let view='mine',GB=null,groupReady=false,groupFirst=true,groupUnsub=null;const groupDocs=new Map();
+function serFish(f){return{id:f.id,name:f.name,kind:f.kind,wiggle:f.wiggle,size:f.size,born:f.born,xp:f.xp,level:f.level,hunger:f.hunger,friend:f.friend,tex:f.tex,pers:f.pers,trust:f.trust,glow:f.glow,hat:f.hat,partyYear:f.partyYear};}
+function spawnGroupFish(id,d,dropIn){const st=(S.gstate||{})[id]||{};const fd=newFishData({id,name:d.name||'Fishy',kind:d.kind||'swim',wiggle:d.wiggle||1,size:d.size||1,pers:d.pers,glow:!!d.glow,born:d.born||d.sentAt||Date.now(),level:st.level||d.level||1,xp:st.xp||0,hunger:st.hunger===undefined?0.4:st.hunger,partyYear:st.partyYear||0});
+ if(st.trust!==undefined)fd.trust=st.trust;fd.by=d.by||'';fd.group=true;return spawnFish(fd,d.tex,dropIn);}
+function removeFishNow(f){const i=fishes.indexOf(f);if(i<0)return;burst(f.pos,20,0.4);freeVisual(f.vis);fishes.splice(i,1);for(const o of fishes){if(o.mama===f)o.mama=null;if(o.leader===f)o.leader=null;if(o.kiss&&o.kiss.p===f)o.kiss=null;}if(tagG&&tagG.players.includes(f))tagG=null;if(partyG&&partyG.f===f)partyG=null;updateEmpty();}
+
+function claudeBackend(db){return{kind:'claude',label:'your Claude account',
+ set:(id,b)=>db.doc('groupfish/'+id).set(b),del:id=>db.doc('groupfish/'+id).delete(),
+ subscribe:(on,err)=>db.collection('groupfish').onSnapshot(snap=>on(snap.docChanges().map(c=>({type:c.type,id:c.doc.id,data:c.doc.data()})),!snap.metadata.fromCache),err)};}
+function serverBackend(url,tankName,key){const base=url.replace(/\/+$/,'')+'/api/tanks/'+encodeURIComponent(tankName);const H={'Content-Type':'application/json'};if(key)H['X-Tank-Key']=key;
+ const fail=r=>{throw{code:r.status===413?'too_big':r.status===401?'key':r.status===507?'quota_exceeded':'unavailable'};};
+ return{kind:'server',label:`your server (${tankName} tank)`,
+  set:async(id,b)=>{const r=await fetch(base+'/fish/'+encodeURIComponent(id),{method:'PUT',headers:H,body:JSON.stringify(b)});if(!r.ok)fail(r);},
+  del:async id=>{const r=await fetch(base+'/fish/'+encodeURIComponent(id),{method:'DELETE',headers:H});if(!r.ok)fail(r);},
+  subscribe:(on,err)=>{let known=new Set();const es=new EventSource(base+'/events'+(key?'?key='+encodeURIComponent(key):''));
+   es.addEventListener('snapshot',e=>{const all=JSON.parse(e.data)||{};const ids=new Set(Object.keys(all)),ch=[];for(const id of known)if(!ids.has(id))ch.push({type:'removed',id});for(const id of ids)ch.push({type:known.has(id)?'modified':'added',id,data:all[id]});known=ids;on(ch,true);});
+   es.addEventListener('put',e=>{const m=JSON.parse(e.data);const t=known.has(m.id)?'modified':'added';known.add(m.id);on([{type:t,id:m.id,data:m.data}],true);});
+   es.addEventListener('delete',e=>{const m=JSON.parse(e.data);known.delete(m.id);on([{type:'removed',id:m.id}],true);});
+   let warned=false;es.onerror=()=>{if(!groupReady&&!warned){warned=true;err&&err({code:'unavailable'});}};
+   return()=>es.close();}};}
+async function serverInfo(url){const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),4000);try{const r=await fetch(url.replace(/\/+$/,'')+'/api/info',{signal:ctl.signal,cache:'no-store'});clearTimeout(t);if(!r.ok)return null;const j=await r.json();return j&&j.app==='doodle-tank'?j:null;}catch(e){clearTimeout(t);return null;}}
+
+function onGroupChanges(changes,confirmed){if(confirmed)groupReady=true;
+ for(const c of changes){const id=c.id;
+  if(c.type==='removed'){groupDocs.delete(id);if(view==='group'){const f=fishes.find(x=>x.id===id);if(f)removeFishNow(f);}continue;}
+  const data=c.data;if(!data||!data.tex)continue;const isNew=!groupDocs.has(id);groupDocs.set(id,data);
+  if(isNew&&!groupFirst){if(view==='group'&&!fishes.some(f=>f.id===id)){spawnGroupFish(id,data,true);setTimeout(sPlop,450);}
+   if(data.by&&data.by!==S.kid)toast(`👥 ${data.by} sent ${data.name} to the group tank!`,3600);}
+  else if(isNew&&view==='group'&&!fishes.some(f=>f.id===id))spawnGroupFish(id,data,false);}
+ groupFirst=false;updateEmpty();if(openSheet&&openSheet.id==='fishCard'&&cardFish)syncCardGroup(cardFish);syncGroupUI();}
+function useBackend(b){if(groupUnsub){try{groupUnsub();}catch(e){}groupUnsub=null;}
+ if(view==='group'){for(const f of fishes.slice())freeVisual(f.vis);fishes.length=0;}
+ groupDocs.clear();groupReady=false;groupFirst=true;GB=b;document.body.classList.toggle('hasGroup',!!b);
+ if(!b){if(view==='group')setView('mine',true);syncGroupUI();return;}
+ const t=setTimeout(()=>{if(!groupReady&&view==='group')toast('Still connecting to the group tank…');},10000);
+ groupUnsub=b.subscribe((ch,ok)=>{if(ok)clearTimeout(t);onGroupChanges(ch,ok);},()=>{clearTimeout(t);if(GB===b){toast(b.kind==='server'?"Can't reach your tank server. Check it's running":'The group tank lost its connection. Reopen the page to reconnect');syncGroupUI('error');}});
+ syncGroupUI();}
+let claudeDb=null;
+async function initGroup(){
+ // 1) a server you've set up in 🎨 Tank → Group tank
+ if(S.server&&S.server.url){useBackend(serverBackend(S.server.url,S.server.tank||'family',S.server.key||''));return;}
+ // 2) the game was opened from a Doodle Tank server: join it automatically
+ if(/^https?:$/.test(location.protocol)&&!/claude|anthropic/.test(location.hostname)){const here=location.href.split(/[?#]/)[0].replace(/[^/]*$/,'');const info=await serverInfo(here);
+  if(info){if(info.needKey&&!S.serverKey){pendingKey={url:here,info};toast('This tank server needs a key. Open 🎨 Tank → Group tank to enter it',4500);syncGroupUI('needkey',here,info);return;}
+   S.autoServer={url:here,tank:info.defaultTank||'family'};useBackend(serverBackend(here,S.autoServer.tank,S.serverKey||''));return;}}
+ // 3) inside Claude while signed in
+ try{if(window.claude&&window.claude.use)claudeDb=await window.claude.use('db');}catch(e){claudeDb=null;}
+ if(claudeDb){useBackend(claudeBackend(claudeDb));return;}
+ syncGroupUI();}
+let pendingKey=null;
+function syncGroupUI(state,url,info){const st=$('#gsStatus');if(!st)return;if(!state&&!GB&&pendingKey){state='needkey';url=pendingKey.url;info=pendingKey.info;}
+ if(state==='needkey'){st.textContent='🔒 This server needs a tank key. Type it below and tap Connect.';$('#gsUrl').value=url||'';$('#gsTank').value=(info&&info.defaultTank)||'family';return;}
+ if(state==='error'){st.textContent=`⚠️ Can't reach ${GB?GB.label:'the group tank'} right now.`;return;}
+ st.textContent=GB?`✅ Group tank is shared through ${GB.label}${groupReady?'':' (connecting…)'}`:'Group tank is off here. Connect your own server below.';
+ if(S.server){$('#gsUrl').value=S.server.url||'';$('#gsTank').value=S.server.tank||'family';$('#gsKey').value=S.server.key||'';}
+ $('#gsOff').style.display=S.server?'':'none';}
+$('#gsConnect').onclick=async()=>{let url=$('#gsUrl').value.trim();const tankName=($('#gsTank').value.trim()||'family').replace(/[^A-Za-z0-9_-]/g,'').slice(0,40)||'family',key=$('#gsKey').value;
+ if(!url){toast('Type your server address first, like http://192.168.1.20:8080');return;}if(!/^https?:\/\//i.test(url))url='http://'+url;
+ if(location.protocol==='https:'&&/^http:/i.test(url)){toast('This page is secure (https), so the server must be https too. Or open the game straight from your server',5000);return;}
+ $('#gsStatus').textContent='Checking your server…';const info=await serverInfo(url);
+ if(!info){$('#gsStatus').textContent=/claude|anthropic/.test(location.hostname)?"⚠️ The Claude page can't reach other servers. Open the game from GitHub Pages or from your server instead.":"⚠️ Couldn't reach a Doodle Tank server at that address.";return;}
+ if(info.needKey&&!key){$('#gsStatus').textContent='🔒 This server needs a tank key.';return;}
+ if(info.needKey){try{const r=await fetch(url.replace(/\/+$/,'')+'/api/tanks/'+tankName+'/fish',{headers:{'X-Tank-Key':key}});if(r.status===401){$('#gsStatus').textContent='🔒 That tank key is wrong.';return;}}catch(e){}}
+ pendingKey=null;S.server={url,tank:tankName,key};S.serverKey=key;save();useBackend(serverBackend(url,tankName,key));sChime();toast(`Connected to the ${tankName} tank 👥`);};
+$('#gsOff').onclick=async()=>{S.server=null;save();useBackend(null);toast('Disconnected from your server');await initGroup();};
+
+function clearTank(){for(const f of fishes)freeVisual(f.vis);fishes.length=0;chats.length=0;tagG=null;partyG=null;partyQ.length=0;lure.on=false;hand.on=false;foods.length=0;cardFish=null;}
+function setView(v,force){if(v===view)return;if(v==='group'&&!GB){toast('Set up the group tank in 🎨 Tank first');return;}
+ if(!force)save();clearTank();view=v;closeSheet();setMode('none');
+ if(v==='group'){for(const[id,d]of groupDocs)spawnGroupFish(id,d,false);if(!groupReady)toast('Connecting to the group tank…');}
+ else for(const d of(S.fish||[]))spawnFish(d,d.tex,false);
+ $$('#viewSeg button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));document.body.classList.toggle('groupView',v==='group');updateEmpty();sClick();}
+$$('#viewSeg button').forEach(b=>b.onclick=()=>setView(b.dataset.v));
+function shrinkTex(src,max){return new Promise(res=>{const img=new Image();img.onload=()=>{const sc=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.max(8,Math.round(img.width*sc));c.height=Math.max(8,Math.round(img.height*sc));c.getContext('2d').drawImage(img,0,0,c.width,c.height);res(c.toDataURL('image/png'));};img.onerror=()=>res(src);img.src=src;});}
+let kidCb=null;
+function askKid(cb){kidCb=cb;$('#kidName').value=S.kid||'';showSheet('#kidSheet');setTimeout(()=>$('#kidName').focus(),300);}
+$('#kidSave').onclick=()=>{const n=$('#kidName').value.trim();if(!n){toast('Type a name first');return;}S.kid=n.slice(0,20);save();closeSheet();const cb=kidCb;kidCb=null;if(cb)cb();};
+async function sendData(d){if(!GB)return false;if(!S.kid){askKid(()=>sendData(d));return false;}
+ if(groupDocs.size>=40&&!groupDocs.has(d.id)){toast('The group tank is full (40 fish). Remove one first');return false;}
+ let tex=d.tex;if(tex.length>200000)tex=await shrinkTex(tex,180);
+ const body={name:d.name,kind:d.kind,wiggle:d.wiggle,size:d.size,pers:d.pers,glow:!!d.glow,tex,by:S.kid,born:d.born,level:d.level||1,sentAt:Date.now()};
+ try{await GB.set(d.id,body);sChime();toast(`${d.name} is swimming in the group tank 👥`);return true;}
+ catch(e){const c=e&&e.code;toast(c==='quota_exceeded'?'The group tank is full. Remove a fish first':c==='key'?'The tank key is wrong. Check 🎨 Tank → Group tank':GB.kind==='server'?"Couldn't send that fish. Is your tank server running?":"Couldn't send that fish. Check you're online and signed in to Claude");return false;}}
+async function removeFromGroup(id){if(!GB)return;try{await GB.del(id);}catch(e){toast("Couldn't remove it right now. Try again in a moment");}}
+function syncCardGroup(f){const b=$('#fcSend'),by=$('#fcBy');
+ if(view==='group'){by.style.display='block';by.textContent=f.by?`✏️ Drawn by ${f.by}`:'';b.style.display='none';$('#fcRelease').textContent='Take out of the group tank';return;}
+ by.style.display='none';if(!GB){b.style.display='none';return;}b.style.display='';b.dataset.arm='';b.textContent=groupDocs.has(f.id)?'✓ In the group tank (tap to take out)':'👥 Send to group tank';}
+$('#fcSend').onclick=async e=>{const f=cardFish,b=e.currentTarget;if(!f)return;
+ if(groupDocs.has(f.id)){if(!b.dataset.arm){b.dataset.arm='1';b.textContent='Tap again to take it out of the group tank';return;}await removeFromGroup(f.id);toast(`${f.name} came home from the group tank`);syncCardGroup(f);return;}
+ b.textContent='Sending…';const ok=await sendData(serFish(f));if(cardFish===f)syncCardGroup(f);if(ok)closeSheet();};
+$('#kidSheet [data-close]').onclick=()=>{kidCb=null;closeSheet();};
+$('#gsKid').onclick=()=>askKid(()=>toast(`Hi ${S.kid}! 👋`));
+
+/* =========================== BOOT =========================== */
+let last=performance.now(),time=0;
+const STARTER=[['Sunny','swim'],['Captain','swim'],['Puff','drift'],['Pebble','ground'],['Angie','swim']];
+function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;holdCheck();if(!(photo.on&&photo.freeze)){time+=dt;updateWorld(dt,time);}updateCamera(dt);render(time);requestAnimationFrame(frame);}
+function boot(){if(!gl)return;try{buildPrograms();}catch(e){console.error(e);$('#nogl').textContent='Shader error: '+e.message;$('#nogl').style.display='flex';return;}
+ initBuffers();buildAtlas();applyTheme();resize();nightK=S.night?1:0;$('#bMoon').textContent=S.night?'☀️':'🌙';
+ for(const it of S.items)loadItemTex(it);
+ if(!S.starterGone){S.fish=(S.fish||[]).filter(d=>!STARTER.some(([n,k])=>n===d.name&&k===d.kind));S.starterGone=1;}
+ const away=S.lastSeen?(Date.now()-S.lastSeen)/1000:0;
+ for(const d of (S.fish||[])){d.hunger=clamp((d.hunger||0)+away/(3*3600),0,1);spawnFish(d,d.tex,false);}
+ for(const n of['ball','hoop','mirror'])if(S.toys[n]&&!toys[n])setToy(n,true);
+ S.tutorial=1;save();updateEmpty();setInterval(save,15000);addEventListener('pagehide',save);document.addEventListener('visibilitychange',()=>{if(document.hidden)save();});
+ if(fishes.length){const hungry=fishes.filter(f=>f.hunger>0.6).length;const tips=['Hold your finger in the water and the fish will follow it 👆','Stroke a fish slowly to pet it 🤚','Tap the glass once and curious fish come to look 👀','Tap 🎈 Play for toys, castles and photo mode'];
+  setTimeout(()=>hint(hungry?'Your fish look hungry. Tap 🍤 Feed':tips[(S.tipN=(S.tipN||0)+1)%tips.length],4500),800);}
+ initGroup();
+ requestAnimationFrame(frame);}
+window.__dt={setView,groupDocs,get GB(){return GB},setScene,setClean,project,fishAt,fishes,foods,dropFood,dirts,scalesW,levelUp,setMode,toys,setToy,doTrick,callFish,setNight,partyQ,glassTap,get S(){return S},get tagG(){return tagG},set tagCD(v){tagCD=v},set partyCD(v){partyCD=v},checkBirthdays,photo,updateGroups,scheduleKisses,chats};
+boot();
+
+</script>
+</body>
+</html>
