@@ -1145,7 +1145,7 @@ function resize(){DPR=Math.min(window.devicePixelRatio||1,2);W=innerWidth;H=inne
  T.baseLen=clamp((aspect<1?0.36:0.27)*Math.min(2*hw,2*hh),1.2,2.4);T.dec=clamp(T.baseLen/1.6,0.75,1.3);
  const key=Math.round(aspect*10)+'_'+S.decorSeed+'_'+S.scene;if(key!==lastDecorKey&&gl){lastDecorKey=key;buildDecor();for(const n of['ball','hoop','mirror'])if(S.toys[n])setToy(n,true);}}
 let rzT;addEventListener('resize',()=>{clearTimeout(rzT);rzT=setTimeout(resize,120);});
-function updateCamera(dt){if(HT.on&&!photo.on){htDetect(performance.now());htApply(dt);return;}if(!photo.on){if(camEye[0]!==CAM[0]||camEye[1]!==CAM[1]||camEye[2]!==CAM[2])setCam([...CAM],[...LOOK]);return;}
+function updateCamera(dt){if(HT.on&&!photo.on){try{htDetect(performance.now());htApply(dt);return;}catch(e){console.error(e);const m=(e&&e.message||String(e)).slice(0,120);htStop();htStatus('Stopped after an error: '+m);toast('Head tracking stopped: '+m,6000);}}if(!photo.on){if(camEye[0]!==CAM[0]||camEye[1]!==CAM[1]||camEye[2]!==CAM[2])setCam([...CAM],[...LOOK]);return;}
  const fp=photo.focus&&fishes.includes(photo.focus)?[photo.focus.pos[0],photo.focus.pos[1],photo.focus.pos[2]]:[...LOOK];const off=V3.sub(CAM,LOOK),z=photo.zoom;
  const tl=photo.focus?fp:LOOK,te=V3.add(tl,V3.mul(off,1/z));const k=1-Math.exp(-4*dt);setCam(camEye.map((v,i)=>lerp(v,te[i],k)),camLook.map((v,i)=>lerp(v,tl[i],k)));}
 
@@ -1169,7 +1169,9 @@ async function htStart(){if(HT.loading||HT.on)return;HT.loading=true;htStatus('S
    const fs=await mp.FilesetResolver.forVisionTasks(base+'/wasm');
    const opts=d=>({baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',delegate:d},runningMode:'VIDEO',numFaces:1});
    HT.mp=mp;HT.fs=fs;HT.opts=opts;
-   try{HT.lm=await mp.FaceLandmarker.createFromOptions(fs,opts('GPU'));HT.dlg='GPU';}catch(e){HT.lm=await mp.FaceLandmarker.createFromOptions(fs,opts('CPU'));HT.dlg='CPU';}}
+   let useGPU=!/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);try{if(localStorage.getItem('dt_ht_cpu')==='1')useGPU=false;}catch(e){}
+   if(useGPU){try{HT.lm=await mp.FaceLandmarker.createFromOptions(fs,opts('GPU'));HT.dlg='GPU';}catch(e){useGPU=false;}}
+   if(!useGPU){HT.lm=await mp.FaceLandmarker.createFromOptions(fs,opts('CPU'));HT.dlg='CPU';}}
   HT.on=true;HT.eye=null;HT.frames=0;HT.missT=0;HT.err='';document.body.classList.add('ht');htStatus('Looking for your face…');
  }catch(e){HT.loading=false;htStop();htStatus("Couldn't start: "+(e&&e.message||e));return;}
  HT.loading=false;syncHT();}
@@ -1675,7 +1677,9 @@ $('#gsKid').onclick=()=>askKid(()=>toast(`Hi ${S.kid}! 👋`));
 let last=performance.now(),time=0;
 const STARTER=[['Sunny','swim'],['Captain','swim'],['Puff','drift'],['Pebble','ground'],['Angie','swim']];
 function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;holdCheck();if(!(photo.on&&photo.freeze)){time+=dt;updateWorld(dt,time);}updateCamera(dt);render(time);requestAnimationFrame(frame);}
-function boot(){if(!gl)return;try{buildPrograms();}catch(e){console.error(e);$('#nogl').textContent='Shader error: '+e.message;$('#nogl').style.display='flex';return;}
+cv.addEventListener('webglcontextlost',e=>{e.preventDefault();try{localStorage.setItem('dt_ht_cpu','1');localStorage.setItem('dt_gl_reset',String(Date.now()));}catch(_){}try{save();}catch(_){}
+ const n=$('#nogl');if(n){n.textContent='Graphics reset, reloading…';n.style.display='flex';}setTimeout(()=>location.reload(),800);},false);
+function boot(){if(!gl)return;try{const r=+localStorage.getItem('dt_gl_reset')||0;if(Date.now()-r<15000){localStorage.removeItem('dt_gl_reset');setTimeout(()=>toast('The graphics reset, so I reloaded. Head tracking will now use the safe mode.',6000),1500);}}catch(_){}try{buildPrograms();}catch(e){console.error(e);$('#nogl').textContent='Shader error: '+e.message;$('#nogl').style.display='flex';return;}
  initBuffers();buildAtlas();applyTheme();resize();nightK=S.night?1:0;$('#bMoon').textContent=S.night?'☀️':'🌙';
  for(const it of S.items)loadItemTex(it);
  if(!S.starterGone){S.fish=(S.fish||[]).filter(d=>!STARTER.some(([n,k])=>n===d.name&&k===d.kind));S.starterGone=1;}
