@@ -95,6 +95,10 @@ input[type=range]{flex:1;accent-color:var(--accent)}
 .theme{border-radius:16px;padding:10px;cursor:pointer;color:#fff;font-weight:800;min-height:78px;display:flex;flex-direction:column;justify-content:space-between;border:3px solid transparent;position:relative;text-shadow:0 1px 3px rgba(0,0,0,.4)}
 .theme.on{border-color:#fff;box-shadow:0 0 0 3px var(--accent)}
 .theme .cost{font-size:13px;display:flex;align-items:center;gap:4px}
+#htPrev{position:fixed;left:10px;bottom:96px;width:128px;height:96px;border-radius:12px;overflow:hidden;display:none;z-index:30;border:2px solid rgba(255,255,255,.6);background:#000}
+body.ht.htprev #htPrev{display:block}body.clean #htPrev{display:none!important}
+#htPrev video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+#htDot{position:absolute;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:#4fe3a0;box-shadow:0 0 0 2px #fff;display:none}
 .toggle{display:flex;justify-content:space-between;align-items:center;padding:8px 2px;font-weight:700}
 .sw2{width:48px;height:28px;border-radius:14px;background:#d8ccb5;position:relative;cursor:pointer;border:0;transition:.2s}
 .sw2::after{content:'';position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s}
@@ -286,6 +290,15 @@ body.groupView #viewSeg button.on{background:#7b5cff}
     <div class="toggle"><span>☀️ Light rays</span><button class="sw2" id="tgRays"></button></div>
     <div class="toggle"><span>🫧 Bubble stones</span><button class="sw2" id="tgBubbles"></button></div>
     <div class="toggle"><span>🔊 Sound</span><button class="sw2" id="tgSound"></button></div>
+  </div>
+  <div class="card" style="margin-top:12px">
+    <h3>🎯 3D window (head tracking)</h3>
+    <div class="stat" style="margin-bottom:6px">Uses your front camera to follow your face, so the tank shifts like a real window as you move your head. Best full screen, one person, about arm's length away. The video stays on this device.</div>
+    <div class="toggle"><span>Head tracking</span><button class="sw2" id="tgHT"></button></div>
+    <p class="stat" id="htStatus" style="margin:2px 0 6px">Off</p>
+    <div class="toggle"><span>Screen width</span><select id="htSize" class="gsIn" style="width:auto;max-width:60%"><option value="7">Phone (7 cm)</option><option value="17">Small tablet (17 cm)</option><option value="25">iPad (25 cm)</option><option value="31">Laptop 14" (31 cm)</option><option value="34.4">15.6" screen (34.4 cm)</option><option value="52">24" monitor (52 cm)</option></select></div>
+    <div class="toggle"><span>Extra depth</span><input type="range" id="htBoost" min="1" max="2.5" step="0.1" style="width:140px"></div>
+    <div class="toggle"><span>Camera preview</span><button class="sw2" id="tgHTPrev"></button></div>
   </div>
   <div class="card" style="margin-top:12px">
     <h3>👥 Group tank</h3>
@@ -1125,10 +1138,59 @@ function resize(){DPR=Math.min(window.devicePixelRatio||1,2);W=innerWidth;H=inne
  T.baseLen=clamp((aspect<1?0.36:0.27)*Math.min(2*hw,2*hh),1.2,2.4);T.dec=clamp(T.baseLen/1.6,0.75,1.3);
  const key=Math.round(aspect*10)+'_'+S.decorSeed+'_'+S.scene;if(key!==lastDecorKey&&gl){lastDecorKey=key;buildDecor();for(const n of['ball','hoop','mirror'])if(S.toys[n])setToy(n,true);}}
 let rzT;addEventListener('resize',()=>{clearTimeout(rzT);rzT=setTimeout(resize,120);});
-function updateCamera(dt){if(!photo.on){if(camEye[0]!==CAM[0]||camEye[1]!==CAM[1]||camEye[2]!==CAM[2])setCam([...CAM],[...LOOK]);return;}
+function updateCamera(dt){if(HT.on&&!photo.on){htDetect(performance.now());htApply(dt);return;}if(!photo.on){if(camEye[0]!==CAM[0]||camEye[1]!==CAM[1]||camEye[2]!==CAM[2])setCam([...CAM],[...LOOK]);return;}
  const fp=photo.focus&&fishes.includes(photo.focus)?[photo.focus.pos[0],photo.focus.pos[1],photo.focus.pos[2]]:[...LOOK];const off=V3.sub(CAM,LOOK),z=photo.zoom;
  const tl=photo.focus?fp:LOOK,te=V3.add(tl,V3.mul(off,1/z));const k=1-Math.exp(-4*dt);setCam(camEye.map((v,i)=>lerp(v,te[i],k)),camLook.map((v,i)=>lerp(v,tl[i],k)));}
 
+
+/* =========================== HEAD TRACKING (3D window) =========================== */
+const HT={on:false,loading:false,lm:null,video:null,stream:null,face:false,eye:null,raw:null,lastT:-1,cm:31,boost:1,hfov:60,prev:true};
+try{HT.cm=+(localStorage.getItem('dt_ht_cm')||31);HT.boost=+(localStorage.getItem('dt_ht_boost')||1);HT.prev=localStorage.getItem('dt_ht_prev')!=='0';}catch(e){}
+const HT_ZS=2.6;
+function htWin(){const d=CAM[2]-HT_ZS,hh=Math.tan(FOV/2)*d,hw=hh*aspect,cy=CAM[1]+(LOOK[1]-CAM[1])*d/(CAM[2]-LOOK[2]);return{hw,hh,cy};}
+function htStatus(t){const e=$('#htStatus');if(e)e.textContent=t;}
+function htDot(u,v){const d=$('#htDot');if(!d)return;if(u==null){d.style.display='none';return;}d.style.display='block';d.style.left=((1-u)*100)+'%';d.style.top=(v*100)+'%';}
+function syncHT(){$('#tgHT').classList.toggle('on',HT.on);$('#tgHTPrev').classList.toggle('on',HT.prev);document.body.classList.toggle('htprev',HT.prev);$('#htSize').value=String(HT.cm);$('#htBoost').value=String(HT.boost);}
+async function htStart(){if(HT.loading||HT.on)return;HT.loading=true;htStatus('Starting camera…');
+ try{
+  if(!window.isSecureContext||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error("this page can't use the camera. Open the GitHub Pages version of Doodle Tank.");
+  HT.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false});
+  const v=HT.video=$('#htVid');v.srcObject=HT.stream;await v.play();
+  if(!HT.lm){htStatus('Loading face tracker (first time takes a few seconds)…');
+   const V='0.10.14',base='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@'+V;
+   const mp=await import(base+'/vision_bundle.mjs');
+   const fs=await mp.FilesetResolver.forVisionTasks(base+'/wasm');
+   const opts=d=>({baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',delegate:d},runningMode:'VIDEO',numFaces:1});
+   try{HT.lm=await mp.FaceLandmarker.createFromOptions(fs,opts('GPU'));}catch(e){HT.lm=await mp.FaceLandmarker.createFromOptions(fs,opts('CPU'));}}
+  HT.on=true;HT.eye=null;document.body.classList.add('ht');htStatus('Looking for your face…');
+ }catch(e){HT.loading=false;htStop();htStatus("Couldn't start: "+(e&&e.message||e));return;}
+ HT.loading=false;syncHT();}
+function htStop(){HT.on=false;if(HT.stream){HT.stream.getTracks().forEach(t=>t.stop());HT.stream=null;}document.body.classList.remove('ht');HT.eye=null;HT.face=false;HT.raw=null;htDot(null);
+ PROJ=persp(FOV,aspect,0.1,120);setCam([...CAM],[...LOOK]);htStatus('Off');syncHT();}
+function htDetect(now){const v=HT.video;if(!HT.lm||!v||v.readyState<2||v.currentTime===HT.lastT)return;HT.lastT=v.currentTime;
+ let r;try{r=HT.lm.detectForVideo(v,now);}catch(e){return;}
+ const L=r&&r.faceLandmarks&&r.faceLandmarks[0];
+ if(!L){HT.face=false;htStatus('Looking for your face…');htDot(null);return;}
+ const mid=(p,q)=>({x:(p.x+q.x)/2,y:(p.y+q.y)/2});
+ const a=(L[468]&&L[473])?[L[468],L[473]]:[mid(L[33],L[133]),mid(L[362],L[263])];
+ const vw=v.videoWidth||640,vh=v.videoHeight||480,f=vw/(2*Math.tan(HT.hfov*Math.PI/360));
+ const ipd=Math.hypot((a[0].x-a[1].x)*vw,(a[0].y-a[1].y)*vh);if(ipd<4)return;
+ const dist=6.3*f/ipd,u=(a[0].x+a[1].x)/2,w=(a[0].y+a[1].y)/2,scrH=HT.cm/aspect;
+ HT.raw=[(0.5-u)*vw/f*dist,(0.5-w)*vh/f*dist+scrH/2,dist];HT.face=true;
+ htStatus('Tracking you · about '+Math.round(dist)+' cm away');htDot(u,w);}
+function htApply(dt){const W0=htWin(),s=(2*W0.hw)/HT.cm;
+ const tgt=(HT.face&&HT.raw)?[HT.raw[0]*s*HT.boost,W0.cy+HT.raw[1]*s*HT.boost,HT_ZS+HT.raw[2]*s]:[0,W0.cy,HT_ZS+55*s];
+ if(!HT.eye)HT.eye=tgt.slice();const k=1-Math.exp(-(HT.face?14:2)*Math.min(dt||0.016,0.1));HT.eye=HT.eye.map((v,i)=>lerp(v,tgt[i],k));
+ const e=HT.eye,d=Math.max(0.5,e[2]-HT_ZS),n=0.1,fa=160;
+ const l=(-W0.hw-e[0])*n/d,r=(W0.hw-e[0])*n/d,b=(W0.cy-W0.hh-e[1])*n/d,t=(W0.cy+W0.hh-e[1])*n/d;
+ PROJ=new Float32Array([2*n/(r-l),0,0,0,0,2*n/(t-b),0,0,(r+l)/(r-l),(t+b)/(t-b),-(fa+n)/(fa-n),-1,0,0,-2*fa*n/(fa-n),0]);
+ VIEW=new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,-e[0],-e[1],-e[2],1]);
+ VP=mmul(PROJ,VIEW);invVP=inv4(VP);const fk=(CAM[2]-HT_ZS)/d;camEye=[e[0]*fk,W0.cy+(e[1]-W0.cy)*fk,HT_ZS+d*fk];camLook=[e[0],e[1],HT_ZS];camR=[1,0,0];camU=[0,1,0];}
+$('#tgHT').onclick=()=>{if(HT.on)htStop();else htStart();};
+$('#tgHTPrev').onclick=()=>{HT.prev=!HT.prev;try{localStorage.setItem('dt_ht_prev',HT.prev?'1':'0');}catch(e){}syncHT();};
+$('#htSize').onchange=e=>{HT.cm=+e.target.value;try{localStorage.setItem('dt_ht_cm',HT.cm);}catch(e){}};
+$('#htBoost').oninput=e=>{HT.boost=+e.target.value;try{localStorage.setItem('dt_ht_boost',HT.boost);}catch(e){}};
+syncHT();
 /* =========================== INPUT (tank) =========================== */
 let mode='none';
 function setMode(m){mode=mode===m?'none':m;$('#bFeed').classList.toggle('on',mode==='feed');$('#bClean').classList.toggle('on',mode==='clean');document.body.classList.toggle('mode-feed',mode==='feed');document.body.classList.toggle('mode-clean',mode==='clean');
@@ -1563,5 +1625,6 @@ window.__dt={setView,groupDocs,get GB(){return GB},setScene,setClean,project,fis
 boot();
 
 </script>
+<div id="htPrev"><video id="htVid" playsinline muted autoplay></video><div id="htDot"></div></div>
 </body>
 </html>
