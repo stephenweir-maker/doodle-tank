@@ -96,7 +96,7 @@ input[type=range]{flex:1;accent-color:var(--accent)}
 .theme.on{border-color:#fff;box-shadow:0 0 0 3px var(--accent)}
 .theme .cost{font-size:13px;display:flex;align-items:center;gap:4px}
 #htPrev{position:fixed;left:10px;bottom:96px;width:128px;height:96px;border-radius:12px;overflow:hidden;display:none;z-index:30;border:2px solid rgba(255,255,255,.6);background:#000}
-body.ht.htprev #htPrev{display:block}body.clean #htPrev{display:none!important}
+body.ht #htPrev{display:block;opacity:0;pointer-events:none}body.ht.htprev #htPrev{opacity:1}body.clean #htPrev{opacity:0!important}
 #htPrev video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
 #htDot{position:absolute;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:#4fe3a0;box-shadow:0 0 0 2px #fff;display:none}
 .toggle{display:flex;justify-content:space-between;align-items:center;padding:8px 2px;font-weight:700}
@@ -1161,16 +1161,19 @@ async function htStart(){if(HT.loading||HT.on)return;HT.loading=true;htStatus('S
    const mp=await import(base+'/vision_bundle.mjs');
    const fs=await mp.FilesetResolver.forVisionTasks(base+'/wasm');
    const opts=d=>({baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',delegate:d},runningMode:'VIDEO',numFaces:1});
-   try{HT.lm=await mp.FaceLandmarker.createFromOptions(fs,opts('GPU'));}catch(e){HT.lm=await mp.FaceLandmarker.createFromOptions(fs,opts('CPU'));}}
-  HT.on=true;HT.eye=null;document.body.classList.add('ht');htStatus('Looking for your face…');
+   HT.mp=mp;HT.fs=fs;HT.opts=opts;
+   try{HT.lm=await mp.FaceLandmarker.createFromOptions(fs,opts('GPU'));HT.dlg='GPU';}catch(e){HT.lm=await mp.FaceLandmarker.createFromOptions(fs,opts('CPU'));HT.dlg='CPU';}}
+  HT.on=true;HT.eye=null;HT.frames=0;HT.missT=0;HT.err='';document.body.classList.add('ht');htStatus('Looking for your face…');
  }catch(e){HT.loading=false;htStop();htStatus("Couldn't start: "+(e&&e.message||e));return;}
  HT.loading=false;syncHT();}
 function htStop(){HT.on=false;if(HT.stream){HT.stream.getTracks().forEach(t=>t.stop());HT.stream=null;}document.body.classList.remove('ht');HT.eye=null;HT.face=false;HT.raw=null;htDot(null);
  PROJ=persp(FOV,aspect,0.1,120);setCam([...CAM],[...LOOK]);htStatus('Off');syncHT();}
 function htDetect(now){const v=HT.video;if(!HT.lm||!v||v.readyState<2||v.currentTime===HT.lastT)return;HT.lastT=v.currentTime;
- let r;try{r=HT.lm.detectForVideo(v,now);}catch(e){return;}
+ if(HT.switching)return;let r;HT.frames=(HT.frames||0)+1;
+ try{r=HT.lm.detectForVideo(v,now);}catch(e){HT.err=(e&&e.message||String(e)).slice(0,90);if(!HT.missT)HT.missT=now;htStatus('Tracker error: '+HT.err+' ('+HT.frames+' frames)');htMaybeCPU();return;}
  const L=r&&r.faceLandmarks&&r.faceLandmarks[0];
- if(!L){HT.face=false;htStatus('Looking for your face…');htDot(null);return;}
+ if(!L){HT.face=false;if(!HT.missT)HT.missT=now;htStatus('Looking for your face… ('+HT.frames+' frames checked, '+(HT.dlg||'?')+' mode, camera '+v.videoWidth+'×'+v.videoHeight+')');htDot(null);htMaybeCPU();return;}
+ HT.missT=0;
  const mid=(p,q)=>({x:(p.x+q.x)/2,y:(p.y+q.y)/2});
  const a=(L[468]&&L[473])?[L[468],L[473]]:[mid(L[33],L[133]),mid(L[362],L[263])];
  const vw=v.videoWidth||640,vh=v.videoHeight||480,f=vw/(2*Math.tan(HT.hfov*Math.PI/360));
@@ -1178,6 +1181,9 @@ function htDetect(now){const v=HT.video;if(!HT.lm||!v||v.readyState<2||v.current
  const dist=6.3*f/ipd,u=(a[0].x+a[1].x)/2,w=(a[0].y+a[1].y)/2,scrH=HT.cm/aspect;
  HT.raw=[(0.5-u)*vw/f*dist,(0.5-w)*vh/f*dist+scrH/2,dist];HT.face=true;
  htStatus('Tracking you · about '+Math.round(dist)+' cm away');htDot(u,w);}
+async function htMaybeCPU(){if(HT.dlg!=='GPU'||!HT.missT||performance.now()-HT.missT<2500||HT.switching||!HT.mp)return;HT.switching=true;htStatus('Switching to the more reliable tracker…');
+ try{const old=HT.lm;HT.lm=await HT.mp.FaceLandmarker.createFromOptions(HT.fs,HT.opts('CPU'));HT.dlg='CPU';HT.missT=0;try{old.close();}catch(e){}}catch(e){htStatus("Couldn't switch tracker: "+(e&&e.message||e));}
+ HT.switching=false;}
 function htApply(dt){const W0=htWin(),s=(2*W0.hw)/HT.cm;
  const tgt=(HT.face&&HT.raw)?[HT.raw[0]*s*HT.boost,W0.cy+HT.raw[1]*s*HT.boost,HT_ZS+HT.raw[2]*s]:[0,W0.cy,HT_ZS+55*s];
  if(!HT.eye)HT.eye=tgt.slice();const k=1-Math.exp(-(HT.face?14:2)*Math.min(dt||0.016,0.1));HT.eye=HT.eye.map((v,i)=>lerp(v,tgt[i],k));
